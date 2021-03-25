@@ -38,14 +38,12 @@ namespace webnn_native {
         ml::OperandType Type() const {
             return mType;
         }
-        int32_t Rank() const {
+        uint32_t Rank() const {
             return mRank;
         }
 
-        static OperandBase* MakeError(GraphBuilderBase* GraphBuilder);
-        virtual MaybeError ValidateAndInferTypes() {
-            UNREACHABLE();
-        }
+        static OperandBase* MakeError(GraphBuilderBase* modelBuilder);
+        virtual MaybeError ValidateAndInferTypes();
 
       private:
         OperandBase(GraphBuilderBase* GraphBuilder, ObjectBase::ErrorTag tag);
@@ -56,7 +54,7 @@ namespace webnn_native {
         // The operand type.
         ml::OperandType mType;
         // only set rank for dimensions
-        int32_t mRank;
+        uint32_t mRank;
     };
 }  // namespace webnn_native
 

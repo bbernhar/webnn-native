@@ -22,10 +22,11 @@ namespace webnn_native { namespace op {
 
     enum UnaryOpType {
         kRelu = 0,
+        kLeakyRelu,
         kSoftmax,
     };
 
-    class Unary final : public OperandBase {
+    class Unary : public OperandBase {
       public:
         Unary(GraphBuilderBase* builder, UnaryOpType opType, OperandBase* input)
             : OperandBase(builder, {input}), mOpType(opType) {

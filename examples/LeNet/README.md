@@ -14,24 +14,25 @@ LeNet [OPTIONs]
 Options:
     -h                      Print this message.
     -i "<path>"             Required. Path to an image.
-    -m "<path>"             Required. Path to a .bin file with trained weights.
+    -m "<path>"             Required. Path to a .bin file with trained weights/biases.
+    -n "<integer>"          Optional. Number of iterations. The default value is 1, and should not be less than 1.
 
 ```
 
 ## Example Output
 
 ```sh
-> out/Release/LeNet -m examples/LeNet/lenet.bin -i examples/LeNet/images/9.idx
+> out/Release/LeNet -m examples/LeNet/lenet.bin -i examples/images/idx/9.idx
 Info: Compilation Time: 27.3588 ms
 Info: Execution Time: 0.919068 ms
 
 Prediction Result:
-#   Label Probability
-0   9     100.00%
-1   2     0.00%
-2   0     0.00%
+#   Probability   Label
+0   100.00%       9
+1   0.00%         2
+2   0.00%         0
 
 Info: Done.
 ```
 
-You can also try other example [images](/examples/LeNet/images).
+You can also try other example [images](/examples/images/idx).

@@ -82,6 +82,26 @@ namespace webnn_native { namespace null {
         return {};
     }
 
+    MaybeError Graph::AddBatchNorm(const op::BatchNorm* batchNorm) {
+        return {};
+    }
+
+    MaybeError Graph::AddLeakyRelu(const op::LeakyRelu* unary) {
+        return {};
+    }
+
+    MaybeError Graph::AddConcat(const op::Concat* concat) {
+        return {};
+    }
+
+    MaybeError Graph::AddGemm(const op::Gemm* gemm) {
+        return {};
+    }
+
+    MaybeError Graph::AddClamp(const op::Clamp* clamp) {
+        return {};
+    }
+
     MaybeError Graph::Finish() {
         return {};
     }

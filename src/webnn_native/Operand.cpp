@@ -42,4 +42,20 @@ namespace webnn_native {
         return mInputs;
     }
 
+    MaybeError OperandBase::ValidateAndInferTypes() {
+        if (mInputs.empty()) {
+            return DAWN_VALIDATION_ERROR("Argument input is empty.");
+        }
+
+        for (auto& input : mInputs) {
+            if (input->IsError()) {
+                return DAWN_VALIDATION_ERROR("Argument inputs are invalid.");
+            }
+        }
+        // The type and rank is the same as input[0] by default.
+        mType = mInputs[0]->Type();
+        mRank = mInputs[0]->Rank();
+        return {};
+    }
+
 }  // namespace webnn_native

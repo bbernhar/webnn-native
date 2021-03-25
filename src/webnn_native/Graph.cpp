@@ -67,6 +67,26 @@ namespace webnn_native {
         UNREACHABLE();
     }
 
+    MaybeError GraphBase::AddBatchNorm(const op::BatchNorm* batchNorm) {
+        UNREACHABLE();
+    }
+
+    MaybeError GraphBase::AddLeakyRelu(const op::LeakyRelu* unary) {
+        UNREACHABLE();
+    }
+
+    MaybeError GraphBase::AddConcat(const op::Concat* concat) {
+        UNREACHABLE();
+    }
+
+    MaybeError GraphBase::AddGemm(const op::Gemm* gemm) {
+        UNREACHABLE();
+    }
+
+    MaybeError GraphBase::AddClamp(const op::Clamp* clamp) {
+        UNREACHABLE();
+    }
+
     MaybeError GraphBase::Finish() {
         UNREACHABLE();
     }

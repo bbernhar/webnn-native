@@ -1,0 +1,910 @@
+// Copyright 2021 The WebNN-native Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "webnn_native/onednn/ModelDNNL.h"
+
+#include <numeric>
+
+#include "common/Assert.h"
+#include "common/Log.h"
+#include "webnn_native/ErrorData.h"
+#include "webnn_native/NamedResults.h"
+#include "webnn_native/Operand.h"
+#include "webnn_native/Result.h"
+#include "webnn_native/onednn/CompilationDNNL.h"
+#include "webnn_native/onednn/NeuralNetworkContextDNNL.h"
+
+#define FAILED(status) (((dnnl_status_t)(status)) != dnnl_success)
+
+const char* dnnl_status2str(dnnl_status_t v) {
+    if (v == dnnl_success)
+        return "success";
+    if (v == dnnl_out_of_memory)
+        return "out_of_memory";
+    if (v == dnnl_invalid_arguments)
+        return "invalid_arguments";
+    if (v == dnnl_unimplemented)
+        return "unimplemented";
+    if (v == dnnl_iterator_ends)
+        return "iterator_ends";
+    if (v == dnnl_runtime_error)
+        return "runtime_error";
+    if (v == dnnl_not_required)
+        return "not_required";
+    return "unknown status";
+}
+
+#define COMPLAIN_DNNL_ERROR_AND_RETURN_DNNL_ERROR(what, status)                           \
+    do {                                                                                  \
+        dawn::ErrorLog() << what << " returns oneDNN error: " << dnnl_status2str(status); \
+        return status;                                                                    \
+    } while (0)
+
+#define DNNL_TRY(f)                                            \
+    do {                                                       \
+        dnnl_status_t s_ = f;                                  \
+        if (s_ != dnnl_success)                                \
+            COMPLAIN_DNNL_ERROR_AND_RETURN_DNNL_ERROR(#f, s_); \
+    } while (0)
+
+#define COMPLAIN_DNNL_ERROR_AND_RETURN_DAWN_ERROR(what, status)                            \
+    do {                                                                                   \
+        std::string message = std::string(what) + std::string(" returns oneDNN error: ") + \
+                              std::string(dnnl_status2str(s_));                            \
+        return DAWN_INTERNAL_ERROR(message.c_str());                                       \
+    } while (0)
+
+#if defined(DAWN_TRY)
+#    undef DAWN_TRY
+#endif
+
+#define DAWN_TRY(f)                                            \
+    do {                                                       \
+        dnnl_status_t s_ = f;                                  \
+        if (s_ != dnnl_success)                                \
+            COMPLAIN_DNNL_ERROR_AND_RETURN_DAWN_ERROR(#f, s_); \
+    } while (0)
+
+#define COMPLAIN_DNNL_ERROR_AND_CALLBACK(what, status)                                     \
+    do {                                                                                   \
+        std::string message = std::string(what) + std::string(" returns oneDNN error: ") + \
+                              std::string(dnnl_status2str(s_));                            \
+        callback(WebnnComputeStatus_Error, nullptr, message.c_str(), userdata);            \
+        return;                                                                            \
+    } while (0)
+
+#define CALLBACK_TRY(f)                               \
+    do {                                              \
+        dnnl_status_t s_ = f;                         \
+        if (s_ != dnnl_success)                       \
+            COMPLAIN_DNNL_ERROR_AND_CALLBACK(#f, s_); \
+    } while (0)
+
+namespace webnn_native { namespace onednn {
+
+    class Result : public ResultBase {
+      public:
+        explicit Result(void* buffer, uint32_t buffer_size, std::vector<int32_t>& dimensions)
+            : ResultBase(buffer, buffer_size, dimensions) {
+        }
+        ~Result() {
+            free(mBuffer);
+        }
+    };
+
+    namespace {
+        dnnl_status_t GetDnnlDataType(ml::OperandType operandType,
+                                      dnnl_data_type_t& dnnlDataType) {
+            if (operandType == ml::OperandType::Float32) {
+                dnnlDataType = dnnl_f32;
+            } else if (operandType == ml::OperandType::Float16) {
+                dnnlDataType = dnnl_f16;
+            } else if (operandType == ml::OperandType::Int32) {
+                dnnlDataType = dnnl_s32;
+            } else {
+                return dnnl_invalid_arguments;
+            }
+            return dnnl_success;
+        }
+
+        dnnl_status_t GetDnnlDimsAndFormartTag(int32_t const* dimensions,
+                                               uint32_t dimensionsCount,
+                                               std::vector<dnnl_dim_t>& dnnlDims,
+                                               dnnl_format_tag_t& tag) {
+            if (dimensionsCount < 1 || dimensionsCount > DNNL_MAX_NDIMS) {
+                return dnnl_invalid_arguments;
+            } else {
+                dnnlDims.resize(dimensionsCount);
+                for (uint32_t i = 0; i < dimensionsCount; ++i) {
+                    int32_t d = dimensions[i];
+                    if (d < 0) {
+                        dawn::ErrorLog() << "oneDNN doesn't support the negative dimension value";
+                        return dnnl_invalid_arguments;
+                    }
+                    dnnlDims[i] = d;
+                }
+                const dnnl_format_tag_t tags[12] = {
+                    dnnl_a,            ///< plain 1D tensor
+                    dnnl_ab,           ///< plain 2D tensor
+                    dnnl_abc,          ///< plain 3D tensor
+                    dnnl_abcd,         ///< plain 4D tensor
+                    dnnl_abcde,        ///< plain 5D tensor
+                    dnnl_abcdef,       ///< plain 6D tensor
+                    dnnl_abcdefg,      ///< plain 7D tensor
+                    dnnl_abcdefgh,     ///< plain 8D tensor
+                    dnnl_abcdefghi,    ///< plain 9D tensor
+                    dnnl_abcdefghij,   ///< plain 10D tensor
+                    dnnl_abcdefghijk,  ///< plain 11D tensor
+                    dnnl_abcdefghijkl  ///< plain 12D tensor
+                };
+                tag = tags[dimensionsCount - 1];
+                return dnnl_success;
+            }
+        }
+
+        enum AccessMode { READ, WRITE };
+
+        dnnl_status_t AccessMemory(void* buffer,
+                                   size_t size,
+                                   dnnl_memory_t mem,
+                                   const AccessMode mode) {
+            DAWN_ASSERT(buffer != nullptr);
+            dnnl_engine_t engine;
+            DNNL_TRY(dnnl_memory_get_engine(mem, &engine));
+            const dnnl_memory_desc_t* md;
+            DNNL_TRY(dnnl_memory_get_memory_desc(mem, &md));
+            size_t bytes = dnnl_memory_desc_get_size(md);
+            if (bytes != size) {
+                dawn::ErrorLog() << "The size is incorrect.";
+                return dnnl_invalid_arguments;
+            }
+            dnnl_engine_kind_t engineKind;
+            DNNL_TRY(dnnl_engine_get_kind(engine, &engineKind));
+            if (engineKind == dnnl_cpu) {
+                void* ptr = nullptr;
+                DNNL_TRY(dnnl_memory_get_data_handle(mem, &ptr));
+                if (ptr) {
+                    if (mode == WRITE) {
+                        memcpy(ptr, buffer, bytes);
+                    } else {
+                        memcpy(buffer, ptr, bytes);
+                    }
+                } else {
+                    dawn::ErrorLog() << "Failed to get memory data handle.";
+                    return dnnl_runtime_error;
+                }
+            } else {
+                dawn::ErrorLog() << "Only cpu engine is supported.";
+                return dnnl_invalid_arguments;
+            }
+            return dnnl_success;
+        }
+        dnnl_status_t WriteToMemory(const void* value, size_t size, dnnl_memory_t mem) {
+            return AccessMemory(const_cast<void*>(value), size, mem, WRITE);
+        }
+
+        dnnl_status_t ReadFromMemory(void* buffer, size_t size, dnnl_memory_t mem) {
+            return AccessMemory(buffer, size, mem, READ);
+        }
+
+        dnnl_status_t CreateDnnlMemory(dnnl_engine_t engine,
+                                       const OperandDescriptor* desc,
+                                       dnnl_memory_t* memory,
+                                       const void* value = nullptr,
+                                       size_t size = 0) {
+            dnnl_data_type_t dataType;
+            DNNL_TRY(GetDnnlDataType(desc->type, dataType));
+            std::vector<dnnl_dim_t> dims;
+            dnnl_format_tag_t tag;
+            DNNL_TRY(GetDnnlDimsAndFormartTag(desc->dimensions, desc->dimensionsCount, dims, tag));
+            dnnl_memory_desc_t md;
+            DNNL_TRY(dnnl_memory_desc_init_by_tag(&md, dims.size(), dims.data(), dataType, tag));
+            void* flag;
+            if (value != nullptr) {
+                flag = DNNL_MEMORY_ALLOCATE;
+            } else {
+                flag = DNNL_MEMORY_NONE;
+            }
+            DNNL_TRY(dnnl_memory_create(memory, &md, engine, flag));
+            if (value != nullptr) {
+                DNNL_TRY(WriteToMemory(value, size, *memory));
+            }
+            return dnnl_success;
+        }
+
+        std::vector<dnnl_dim_t> ShrinkDimensions(const std::vector<dnnl_dim_t>& dims, size_t rank) {
+            DAWN_ASSERT(rank <= dims.size());
+            std::vector<dnnl_dim_t> newDims(rank);
+            for (size_t i = 0; i < rank; ++i) {
+                newDims[newDims.size() - i - 1] = dims[dims.size() - i - 1];
+            }
+            return newDims;
+        }
+
+        std::vector<dnnl_dim_t> ExpandDimensions(const std::vector<dnnl_dim_t>& dims, size_t rank) {
+            DAWN_ASSERT(rank >= dims.size());
+            std::vector<dnnl_dim_t> newDims(rank, 1);
+            for (size_t i = 0; i < dims.size(); ++i) {
+                newDims[newDims.size() - i - 1] = dims[dims.size() - i - 1];
+            }
+            return newDims;
+        }
+
+        dnnl_status_t BroadcastDimensions(std::vector<dnnl_dim_t>& aDims,
+                                          std::vector<dnnl_dim_t>& bDims,
+                                          std::vector<dnnl_dim_t>& cDims,
+                                          bool& aBroadcasted,
+                                          bool& bBroadcasted,
+                                          size_t skipAxis = 0) {
+            auto aRank = aDims.size();
+            auto bRank = bDims.size();
+            auto cRank = cDims.size();
+            auto newRank = std::max(aRank, bRank);
+            std::vector<dnnl_dim_t> aNewDims;
+            std::vector<dnnl_dim_t> bNewDims;
+            std::vector<dnnl_dim_t> cNewDims;
+            if (newRank > aRank) {
+                aNewDims = ExpandDimensions(aDims, newRank);
+                aBroadcasted = true;
+            } else {
+                aNewDims = aDims;
+            }
+            if (newRank > bRank) {
+                bNewDims = ExpandDimensions(bDims, newRank);
+                bBroadcasted = true;
+            } else {
+                bNewDims = bDims;
+            }
+            if (newRank > cRank) {
+                cNewDims = ExpandDimensions(cDims, newRank);
+            } else {
+                cNewDims = cDims;
+            }
+            for (size_t i = 0; i < newRank - skipAxis; i++) {
+                if (aNewDims[i] == 1 && bNewDims[i] != 1) {
+                    cNewDims[i] = bNewDims[i];
+                } else if (bNewDims[i] == 1 && aNewDims[i] != 1) {
+                    cNewDims[i] = aNewDims[i];
+                } else if (aNewDims[i] != bNewDims[i]) {
+                    return dnnl_invalid_arguments;
+                } else {
+                    cNewDims[i] = aNewDims[i];
+                }
+            }
+            aDims = aNewDims;
+            bDims = bNewDims;
+            cDims = cNewDims;
+            return dnnl_success;
+        }
+
+    }  // anonymous namespace
+
+    Model::Model(ModelBuilder* modelBuilder) : GraphBase(modelBuilder) {
+    }
+
+    Model::~Model() {
+        for (auto memory : mMemories) {
+            dnnl_memory_destroy(memory);
+        }
+        for (auto op : mOperations) {
+            dnnl_primitive_destroy(op.primitive);
+        }
+    }
+
+    MaybeError Model::AddConstant(const op::Constant* constant) {
+        const OperandDescriptor* desc = constant->GetOperandDescriptor();
+        dnnl_memory_t memory;
+        DAWN_TRY(CreateDnnlMemory(GetEngine(), desc, &memory, constant->GetValue(),
+                                  constant->GetSize()));
+        mMemories.push_back(memory);
+        mConstantMemories.insert(memory);
+        mOperandMemoryMap.insert(std::make_pair(constant, memory));
+        return {};
+    }
+
+    MaybeError Model::AddInput(const op::Input* input) {
+        const OperandDescriptor* desc = input->GetOperandDescriptor();
+        dnnl_memory_t memory;
+        DAWN_TRY(CreateDnnlMemory(GetEngine(), desc, &memory));
+        mMemories.push_back(memory);
+        mOperandMemoryMap.insert(std::make_pair(input, memory));
+        mInputMemoryMap.insert(std::make_pair(input->GetName(), memory));
+        return {};
+    }
+
+    MaybeError Model::AddOutput(const std::string& name, const OperandBase* output) {
+        DAWN_ASSERT(mOperandMemoryMap.find(output) != mOperandMemoryMap.end());
+        dnnl_memory_t plainOutputMemory;
+        DAWN_TRY(ReorderToPlainFormat(mOperandMemoryMap.at(output), &plainOutputMemory));
+        mOutputMemoryMap.insert(std::make_pair(name, plainOutputMemory));
+        return {};
+    }
+
+    MaybeError Model::AddBinary(const op::Binary* binary) {
+        DAWN_ASSERT(binary->Inputs().size() == 2);
+        DAWN_ASSERT(mOperandMemoryMap.find(binary->Inputs()[0].Get()) != mOperandMemoryMap.end());
+        dnnl_memory_t aMemory = mOperandMemoryMap.at(binary->Inputs()[0].Get());
+        const dnnl_memory_desc_t* aMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(aMemory, &aMemoryDesc));
+        DAWN_ASSERT(mOperandMemoryMap.find(binary->Inputs()[1].Get()) != mOperandMemoryMap.end());
+        dnnl_memory_t bMemory = mOperandMemoryMap.at(binary->Inputs()[1].Get());
+        const dnnl_memory_desc_t* bMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(bMemory, &bMemoryDesc));
+        std::vector<dnnl_dim_t> aDims(aMemoryDesc->dims, aMemoryDesc->dims + aMemoryDesc->ndims);
+        std::vector<dnnl_dim_t> bDims(bMemoryDesc->dims, bMemoryDesc->dims + bMemoryDesc->ndims);
+        std::vector<dnnl_dim_t> cDims;
+        bool aBroadcasted = false;
+        bool bBroadcasted = false;
+        const int aRank = aDims.size();
+        const int bRank = bDims.size();
+        int cRank = 0;
+        bool needBroadcast = true;
+        size_t broadcastSkipAxis = 0;
+        if (binary->GetType() == op::BinaryOpType::kMatMul) {
+            if (aRank == 1 && bRank == 1) {
+                // If both a and b are 1-D, the operation is a vector dot-product,
+                // which produces a scalar output.
+                cRank = 1;
+            } else {
+                // The output is a N-D tensor whose rank is the maximum rank of the
+                // input tensors.
+                cRank = std::max(aRank, bRank);
+            }
+            if (aRank == 1) {
+                // If a is 1-D, it is converted to a 2-D tensor by prepending a 1 to its dimensions
+                dnnl_dim_t dim = aDims[0];
+                aDims.resize(2);
+                aDims[0] = 1;
+                aDims[1] = dim;
+                aBroadcasted = true;
+            }
+            if (bRank == 1) {
+                // If b is 1-D, it is converted to a 2-D tensor by by appending a 1 to its
+                // dimensions.
+                dnnl_dim_t dim = bDims[0];
+                bDims.resize(2);
+                bDims[0] = dim;
+                bDims[1] = 1;
+                bBroadcasted = true;
+            }
+            if (aDims.size() > 2 || bDims.size() > 2) {
+                // If either a or b is N-D, N > 2, it is treated as a stack of matrices
+                // with dimensions corresponding to the last two indices. The matrix
+                // multiplication will be broadcasted accordingly by following
+                // [numpy-broadcasting-rule].
+                needBroadcast = true;
+                broadcastSkipAxis = 2;
+            } else {
+                needBroadcast = false;
+            }
+            // Set output dims.
+            cDims.resize(2);
+            cDims[0] = aDims[aDims.size() - 2];
+            cDims[1] = bDims[bDims.size() - 1];
+        } else {
+            // The element-wise binary operation will be broadcasted according to
+            // [numpy-broadcasting-rule].
+            needBroadcast = true;
+            broadcastSkipAxis = 0;
+        }
+
+        if (needBroadcast) {
+            DAWN_TRY(BroadcastDimensions(aDims, bDims, cDims, aBroadcasted, bBroadcasted,
+                                         broadcastSkipAxis));
+        }
+        dnnl_memory_desc_t aBroadcastedMemoryDesc;
+        if (aBroadcasted) {
+            DAWN_TRY(dnnl_memory_desc_reshape(&aBroadcastedMemoryDesc, aMemoryDesc, aDims.size(),
+                                              aDims.data()));
+            aMemoryDesc = &aBroadcastedMemoryDesc;
+        }
+        dnnl_memory_desc_t bBroadcastedMemoryDesc;
+        if (bBroadcasted) {
+            DAWN_TRY(dnnl_memory_desc_reshape(&bBroadcastedMemoryDesc, bMemoryDesc, bDims.size(),
+                                              bDims.data()));
+            bMemoryDesc = &bBroadcastedMemoryDesc;
+        }
+        dnnl_memory_desc_t cInitDesc;
+        DAWN_TRY(dnnl_memory_desc_init_by_tag(&cInitDesc, cDims.size(), cDims.data(),
+                                              aMemoryDesc->data_type, dnnl_format_tag_any));
+        dnnl_primitive_desc_t primitiveDesc;
+        dnnl_data_type_t dataType = aMemoryDesc->data_type;
+        if (binary->GetType() == op::BinaryOpType::kMatMul) {
+            dnnl_memory_desc_t aInitDesc;
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&aInitDesc, aDims.size(), aDims.data(), dataType,
+                                                  dnnl_format_tag_any));
+            dnnl_memory_desc_t bInitDesc;
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&bInitDesc, bDims.size(), bDims.data(), dataType,
+                                                  dnnl_format_tag_any));
+            dnnl_matmul_desc_t matmulDesc;
+            DAWN_TRY(dnnl_matmul_desc_init(&matmulDesc, &aInitDesc, &bInitDesc, NULL, &cInitDesc));
+            DAWN_TRY(
+                dnnl_primitive_desc_create(&primitiveDesc, &matmulDesc, NULL, GetEngine(), NULL));
+            const dnnl_memory_desc_t* input0InternalMemoryDesc =
+                dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_src_md, 0);
+            DAWN_TRY(ReorderIfNeeded(aMemoryDesc, aMemory, input0InternalMemoryDesc, &aMemory));
+            const dnnl_memory_desc_t* input1InternalMemoryDesc =
+                dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_weights_md, 0);
+            DAWN_TRY(ReorderIfNeeded(bMemoryDesc, bMemory, input1InternalMemoryDesc, &bMemory));
+        } else {
+            dnnl_alg_kind_t algKind;
+            if (binary->GetType() == op::BinaryOpType::kAdd) {
+                algKind = dnnl_binary_add;
+            } else if (binary->GetType() == op::BinaryOpType::kMul) {
+                algKind = dnnl_binary_mul;
+            } else {
+                return DAWN_UNIMPLEMENTED_ERROR("Binary op is unimplemented.");
+            }
+            dnnl_binary_desc_t binaryDesc;
+            DAWN_TRY(
+                dnnl_binary_desc_init(&binaryDesc, algKind, aMemoryDesc, bMemoryDesc, &cInitDesc));
+            DAWN_TRY(
+                dnnl_primitive_desc_create(&primitiveDesc, &binaryDesc, NULL, GetEngine(), NULL));
+        }
+        dnnl_memory_t cMemory;
+        dnnl_primitive_t primitive;
+        const dnnl_memory_desc_t* cMemoryDesc =
+            dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
+        DAWN_TRY(dnnl_memory_create(&cMemory, cMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+        DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
+        DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
+        std::vector<dnnl_exec_arg_t> args;
+        if (binary->GetType() == op::BinaryOpType::kMatMul) {
+            args = {{DNNL_ARG_SRC, aMemory}, {DNNL_ARG_WEIGHTS, bMemory}, {DNNL_ARG_DST, cMemory}};
+        } else {
+            args = {{DNNL_ARG_SRC_0, aMemory}, {DNNL_ARG_SRC_1, bMemory}, {DNNL_ARG_DST, cMemory}};
+        }
+        mOperations.push_back({primitive, args});
+        mMemories.push_back(cMemory);
+        mOperandMemoryMap.insert(std::make_pair(binary, cMemory));
+        if (cRank != 0 && cRank < cMemoryDesc->ndims) {
+            std::vector<dnnl_dim_t> cDims(cMemoryDesc->dims,
+                                          cMemoryDesc->dims + cMemoryDesc->ndims);
+            std::vector<dnnl_dim_t> cNewDims = ShrinkDimensions(cDims, cRank);
+            dnnl_memory_desc_t cNewMemoryDesc;
+            DAWN_TRY(dnnl_memory_desc_reshape(&cNewMemoryDesc, cMemoryDesc, cNewDims.size(),
+                                              cNewDims.data()));
+            mMemoryReinterprets.insert(std::make_pair(cMemory, cNewMemoryDesc));
+        }
+        return {};
+    }
+
+    MaybeError Model::AddConv2d(const op::Conv2d* conv2d) {
+        DAWN_ASSERT(conv2d->Inputs().size() == 2);
+        const OperandBase* inputOperand = conv2d->Inputs()[0].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t inputMemory = mOperandMemoryMap.at(inputOperand);
+        const dnnl_memory_desc_t* inputMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
+        std::vector<dnnl_dim_t> inputDims(inputMemoryDesc->dims,
+                                          inputMemoryDesc->dims + inputMemoryDesc->ndims);
+        const OperandBase* filterOperand = conv2d->Inputs()[1].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(filterOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t filterMemory = mOperandMemoryMap.at(filterOperand);
+        const dnnl_memory_desc_t* filterMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(filterMemory, &filterMemoryDesc));
+        std::vector<dnnl_dim_t> filterDims(filterMemoryDesc->dims,
+                                           filterMemoryDesc->dims + filterMemoryDesc->ndims);
+        dnnl_data_type_t dataType = inputMemoryDesc->data_type;
+        dnnl_memory_desc_t inputInitDesc;
+        DAWN_TRY(dnnl_memory_desc_init_by_tag(&inputInitDesc, inputDims.size(), inputDims.data(),
+                                              dataType, dnnl_format_tag_any));
+        dnnl_memory_desc_t filterInitDesc;
+        DAWN_TRY(dnnl_memory_desc_init_by_tag(&filterInitDesc, filterDims.size(), filterDims.data(),
+                                              dataType, dnnl_format_tag_any));
+        const Conv2dOptions* options = conv2d->GetOptions();
+        std::vector<dnnl_dim_t> strides = {options->strides[0], options->strides[1]};
+        // Non-dilated convolution is defined by setting the dilation parameters to 0
+        std::vector<dnnl_dim_t> dilates = {options->dilations[0] == 1 ? 0 : options->dilations[0],
+                                           options->dilations[1] == 1 ? 0 : options->dilations[1]};
+        std::vector<dnnl_dim_t> padding_l = {options->padding[0], options->padding[2]};
+        std::vector<dnnl_dim_t> padding_r = {options->padding[1], options->padding[3]};
+        if (options->groups != 1) {
+            // FIXME(nhu): implement the grouped conv2d.
+            return DAWN_INTERNAL_ERROR("Grouped conv is unimplemented.");
+        }
+        if (options->inputLayout != ml::InputOperandLayout::Nchw) {
+            // FIXME(nhu): implement the nhwc layout.
+            return DAWN_INTERNAL_ERROR("nhwc layout is unimplemented.");
+        }
+        std::vector<dnnl_dim_t> outputDims(4);
+        outputDims[0] = inputDims[0];
+        // Assume filter layout is oihw
+        outputDims[1] = filterDims[0];
+        for (int i = 2; i < 4; ++i) {
+            int src = inputDims[i];
+            int ker = filterDims[i];
+            int dil = dilates[i - 2];
+            int pad_l = padding_l[i - 2];
+            int pad_r = padding_r[i - 2];
+            int str = strides[i - 2];
+            int ker_range = 1 + (ker - 1) * (dil + 1);
+            outputDims[i] = (src - ker_range + pad_l + pad_r) / str + 1;
+        }
+        dnnl_memory_desc_t outputInitDesc;
+        DAWN_TRY(dnnl_memory_desc_init_by_tag(&outputInitDesc, outputDims.size(), outputDims.data(),
+                                              dataType, dnnl_format_tag_any));
+        dnnl_convolution_desc_t convDesc;
+        DAWN_TRY(dnnl_dilated_convolution_forward_desc_init(
+            &convDesc, dnnl_forward, dnnl_convolution_direct, &inputInitDesc, &filterInitDesc, NULL,
+            &outputInitDesc, strides.data(), dilates.data(), padding_l.data(), padding_r.data()));
+        dnnl_primitive_desc_t primitiveDesc;
+        DAWN_TRY(dnnl_primitive_desc_create(&primitiveDesc, &convDesc, NULL, GetEngine(), NULL));
+        const dnnl_memory_desc_t* inputInternalMemoryDesc =
+            dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_src_md, 0);
+        dnnl_memory_t inputInternalMemory;
+        DAWN_TRY(ReorderIfNeeded(inputMemoryDesc, inputMemory, inputInternalMemoryDesc,
+                                 &inputInternalMemory));
+        const dnnl_memory_desc_t* filterInternalMemoryDesc =
+            dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_weights_md, 0);
+        dnnl_memory_t filterInternalMemory;
+        DAWN_TRY(ReorderIfNeeded(filterMemoryDesc, filterMemory, filterInternalMemoryDesc,
+                                 &filterInternalMemory));
+        const dnnl_memory_desc_t* outputMemoryDesc =
+            dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
+        dnnl_memory_t outputMemory;
+        DAWN_TRY(
+            dnnl_memory_create(&outputMemory, outputMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+        dnnl_primitive_t primitive;
+        DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
+        DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
+        std::vector<dnnl_exec_arg_t> args = {{DNNL_ARG_SRC, inputInternalMemory},
+                                             {DNNL_ARG_WEIGHTS, filterInternalMemory},
+                                             {DNNL_ARG_DST, outputMemory}};
+        mOperations.push_back({primitive, args});
+        mMemories.push_back(outputMemory);
+        mOperandMemoryMap.insert(std::make_pair(conv2d, outputMemory));
+        return {};
+    }
+
+    MaybeError Model::AddPool2d(const op::Pool2d* pool2d) {
+        DAWN_ASSERT(pool2d->Inputs().size() == 1);
+        const OperandBase* inputOperand = pool2d->Inputs()[0].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t inputMemory = mOperandMemoryMap.at(inputOperand);
+        const dnnl_memory_desc_t* inputMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
+        std::vector<dnnl_dim_t> inputDims(inputMemoryDesc->dims,
+                                          inputMemoryDesc->dims + inputMemoryDesc->ndims);
+        dnnl_data_type_t dataType = inputMemoryDesc->data_type;
+        const Pool2dOptions* options = pool2d->GetOptions();
+        if (options->layout != ml::InputOperandLayout::Nchw) {
+            // FIXME(nhu): implement the nhwc layout.
+            return DAWN_INTERNAL_ERROR("nhwc layout is unimplemented.");
+        }
+        std::vector<dnnl_dim_t> kernel;
+        if (options->windowDimensions != nullptr) {
+            kernel = {options->windowDimensions[0], options->windowDimensions[1]};
+        } else {
+            kernel = {inputDims[2], inputDims[3]};
+        }
+        std::vector<dnnl_dim_t> strides = {options->strides[0], options->strides[1]};
+        // Non-dilated convolution is defined by setting the dilation parameters to 0
+        std::vector<dnnl_dim_t> dilates = {options->dilations[0] == 1 ? 0 : options->dilations[0],
+                                           options->dilations[1] == 1 ? 0 : options->dilations[1]};
+        std::vector<dnnl_dim_t> padding_l = {options->padding[0], options->padding[2]};
+        std::vector<dnnl_dim_t> padding_r = {options->padding[1], options->padding[3]};
+        std::vector<dnnl_dim_t> outputDims(4);
+        outputDims[0] = inputDims[0];
+        // Assume input layout is oihw
+        outputDims[1] = inputDims[1];
+        for (int i = 2; i < 4; ++i) {
+            int src = inputDims[i];
+            int ker = kernel[i - 2];
+            int dil = dilates[i - 2];
+            int pad_l = padding_l[i - 2];
+            int pad_r = padding_r[i - 2];
+            int str = strides[i - 2];
+            int ker_range = 1 + (ker - 1) * (dil + 1);
+            outputDims[i] = (src - ker_range + pad_l + pad_r) / str + 1;
+        }
+        dnnl_memory_desc_t outputInitDesc;
+        DAWN_TRY(dnnl_memory_desc_init_by_tag(&outputInitDesc, outputDims.size(), outputDims.data(),
+                                              dataType, dnnl_format_tag_any));
+        dnnl_alg_kind_t poolType;
+        if (pool2d->GetType() == op::Pool2dType::kAveragePool2d) {
+            poolType = dnnl_pooling_avg;
+        } else if (pool2d->GetType() == op::Pool2dType::kMaxPool2d) {
+            poolType = dnnl_pooling_max;
+        } else {
+            return DAWN_INTERNAL_ERROR("l2Pool2d is not supported.");
+        }
+        dnnl_pooling_v2_desc_t poolDesc;
+        DAWN_TRY(dnnl_pooling_v2_forward_desc_init(
+            &poolDesc, dnnl_forward, poolType, inputMemoryDesc, &outputInitDesc, strides.data(),
+            kernel.data(), dilates.data(), padding_l.data(), padding_r.data()));
+        dnnl_primitive_desc_t primitiveDesc;
+        DAWN_TRY(dnnl_primitive_desc_create(&primitiveDesc, &poolDesc, NULL, GetEngine(), NULL));
+        const dnnl_memory_desc_t* outputMemoryDesc =
+            dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
+        dnnl_memory_t outputMemory;
+        DAWN_TRY(
+            dnnl_memory_create(&outputMemory, outputMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+        dnnl_primitive_t primitive;
+        DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
+        std::vector<dnnl_exec_arg_t> args = {{DNNL_ARG_SRC, inputMemory},
+                                             {DNNL_ARG_DST, outputMemory}};
+        if (poolType == dnnl_pooling_max) {
+            const dnnl_memory_desc_t* workspaceMemoryDesc =
+                dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_workspace_md, 0);
+            dnnl_memory_t workspaceMemory;
+            DAWN_TRY(dnnl_memory_create(&workspaceMemory, workspaceMemoryDesc, GetEngine(),
+                                        DNNL_MEMORY_ALLOCATE));
+            args.push_back({DNNL_ARG_WORKSPACE, workspaceMemory});
+            mMemories.push_back(workspaceMemory);
+        }
+        DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
+        mOperations.push_back({primitive, args});
+        mMemories.push_back(outputMemory);
+        mOperandMemoryMap.insert(std::make_pair(pool2d, outputMemory));
+        return {};
+    }
+
+    MaybeError Model::AddReshape(const op::Reshape* reshape) {
+        DAWN_ASSERT(reshape->Inputs().size() == 1);
+        const OperandBase* inputOperand = reshape->Inputs()[0].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t inputMemory;
+        DAWN_TRY(ReorderToPlainFormat(mOperandMemoryMap.at(inputOperand), &inputMemory));
+        const dnnl_memory_desc_t* inputMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
+
+        std::vector<int32_t> newShape;
+        newShape.assign(reshape->GetNewShape(),
+                        reshape->GetNewShape() + reshape->GetNewShapeCount());
+        std::vector<dnnl_dim_t> newSizes(newShape.size());
+        uint32_t outputElementCount = 1;
+        int32_t inferAxis = -1;
+
+        uint32_t inputElementCount =
+            std::accumulate(inputMemoryDesc->dims, inputMemoryDesc->dims + inputMemoryDesc->ndims,
+                            1, std::multiplies<uint32_t>());
+
+        for (size_t i = 0; i < newShape.size(); ++i) {
+            if (newShape[i] == -1) {
+                if (inferAxis != -1) {
+                    return DAWN_VALIDATION_ERROR("New shape should contain only one -1 value.");
+                } else {
+                    inferAxis = i;
+                }
+            } else if (newShape[i] <= 0) {
+                return DAWN_VALIDATION_ERROR("Argument new shape is invalid");
+            } else {
+                newSizes[i] = newShape[i];
+                outputElementCount *= newSizes[i];
+            }
+        }
+
+        if (inferAxis != -1) {
+            newSizes[inferAxis] = inputElementCount / outputElementCount;
+        }
+
+        dnnl_memory_desc_t reshapedMemoryDesc;
+        DAWN_TRY(dnnl_memory_desc_reshape(&reshapedMemoryDesc, inputMemoryDesc, newSizes.size(),
+                                          newSizes.data()));
+        mOperandMemoryMap.insert(std::make_pair(reshape, inputMemory));
+        mMemoryReinterprets.insert(std::make_pair(inputMemory, reshapedMemoryDesc));
+        return {};
+    }
+
+    MaybeError Model::AddTranspose(const op::Transpose* transpose) {
+        DAWN_ASSERT(transpose->Inputs().size() == 1);
+        const OperandBase* inputOperand = transpose->Inputs()[0].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t inputMemory = mOperandMemoryMap.at(inputOperand);
+        const dnnl_memory_desc_t* inputMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
+        // WebNN transpose uses outDims[d] = inDims[perm[d]]
+        // dnnl_memory_desc_permute_axes uses outDims[perm[d]] = inDims[d]
+        const TransposeOptions* options = transpose->GetOptions();
+        const int inputRank = inputMemoryDesc->ndims;
+        std::vector<int> permutation(inputRank);
+        if (options->permutationCount == 0) {
+            size_t index = inputRank;
+            for (auto& p : permutation) {
+                p = --index;
+            }
+        } else if (options->permutationCount == (uint32_t)inputRank) {
+            for (int i = 0; i < inputRank; ++i) {
+                if (options->permutation[i] < 0 || options->permutation[i] >= inputRank) {
+                    return DAWN_VALIDATION_ERROR("The value of permutation is invalid.");
+                } else {
+                    permutation[options->permutation[i]] = i;
+                }
+            }
+        } else {
+            return DAWN_VALIDATION_ERROR("The size of permutation is invalid.");
+        }
+        dnnl_memory_desc_t transposedMemoryDesc;
+        DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedMemoryDesc, inputMemoryDesc,
+                                               permutation.data()));
+        mOperandMemoryMap.insert(std::make_pair(transpose, inputMemory));
+        mMemoryReinterprets.insert(std::make_pair(inputMemory, transposedMemoryDesc));
+        return {};
+    }
+
+    MaybeError Model::AddUnary(const op::Unary* unary) {
+        DAWN_ASSERT(unary->Inputs().size() == 1);
+        const OperandBase* inputOperand = unary->Inputs()[0].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t inputMemory = mOperandMemoryMap.at(inputOperand);
+        const dnnl_memory_desc_t* inputMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
+        dnnl_primitive_desc_t primitiveDesc;
+        dnnl_primitive_t primitive;
+        dnnl_memory_t outputMemory;
+        if (unary->GetType() == op::UnaryOpType::kRelu) {
+            dnnl_eltwise_desc_t eltWiseDesc;
+            DAWN_TRY(dnnl_eltwise_forward_desc_init(&eltWiseDesc, dnnl_forward, dnnl_eltwise_relu,
+                                                    inputMemoryDesc, 0, 0));
+            DAWN_TRY(dnnl_primitive_desc_create(&primitiveDesc, &eltWiseDesc, nullptr, GetEngine(),
+                                                nullptr));
+        } else if (unary->GetType() == op::UnaryOpType::kSoftmax) {
+            dnnl_softmax_desc_t softmaxDesc;
+            DAWN_TRY(
+                dnnl_softmax_forward_desc_init(&softmaxDesc, dnnl_forward, inputMemoryDesc, 1));
+            DAWN_TRY(dnnl_primitive_desc_create(&primitiveDesc, &softmaxDesc, nullptr, GetEngine(),
+                                                nullptr));
+        } else {
+            return DAWN_UNIMPLEMENTED_ERROR("Unary op is unimplemented.");
+        }
+        const dnnl_memory_desc_t* outputMemoryDesc =
+            dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
+        DAWN_TRY(
+            dnnl_memory_create(&outputMemory, outputMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+        DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
+        DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
+        mOperations.push_back(
+            {primitive, {{DNNL_ARG_SRC, inputMemory}, {DNNL_ARG_DST, outputMemory}}});
+        mMemories.push_back(outputMemory);
+        mOperandMemoryMap.insert(std::make_pair(unary, outputMemory));
+        return {};
+    }
+
+    MaybeError Model::Finish() {
+        return {};
+    }
+
+    void Model::CompileImpl(WebnnCompileCallback callback,
+                            void* userdata,
+                            CompilationOptions const* options) {
+        Ref<Compilation> compilation = AcquireRef(new Compilation(this));
+        if (FAILED(dnnl_stream_create(&mStream, GetEngine(), dnnl_stream_default_flags))) {
+            callback(WebnnCompileStatus_Error, nullptr, "dnnl_stream_create failed", userdata);
+            return;
+        } else {
+            callback(WebnnCompileStatus_Success,
+                     reinterpret_cast<WebnnCompilation>(compilation.Detach()), nullptr, userdata);
+        }
+    }
+
+    void Model::ComputeImpl(NamedInputsBase* inputs,
+                            WebnnComputeCallback callback,
+                            void* userdata,
+                            NamedOutputsBase* outputs) {
+        for (auto& input : inputs->GetRecords()) {
+            dnnl_memory_t inputMemory = mInputMemoryMap.at(input.first);
+            CALLBACK_TRY(dnnl_memory_set_data_handle_v2(
+                inputMemory, const_cast<void*>(input.second->buffer), mStream));
+        }
+
+        for (auto op : mOperations) {
+            CALLBACK_TRY(
+                dnnl_primitive_execute(op.primitive, mStream, op.args.size(), op.args.data()));
+        }
+
+        CALLBACK_TRY(dnnl_stream_wait(mStream));
+
+        std::vector<std::string> outputNames;
+        if (outputs != nullptr) {
+            for (auto& output : outputs->GetRecords()) {
+                outputNames.push_back(output.first);
+            }
+        } else {
+            for (auto& output : mOutputMemoryMap) {
+                outputNames.push_back(output.first);
+            }
+        }
+
+        Ref<NamedResultsBase> results = AcquireRef(new NamedResultsBase());
+        for (size_t i = 0; i < outputNames.size(); ++i) {
+            std::string outputName = outputNames[i];
+            dnnl_memory_t outputMemory = mOutputMemoryMap.at(outputName);
+            const dnnl_memory_desc_t* outputMemoryDesc;
+            CALLBACK_TRY(GetMemoryDesc(outputMemory, &outputMemoryDesc));
+            std::vector<int32_t> dimensions;
+            for (int i = 0; i < outputMemoryDesc->ndims; ++i) {
+                // FIXME(nhu): convert from int64_t to int32_t.
+                dimensions.push_back(outputMemoryDesc->dims[i]);
+            }
+            size_t bufferLength = dnnl_memory_desc_get_size(outputMemoryDesc);
+            void* outputBuffer = malloc(bufferLength);
+            CALLBACK_TRY(ReadFromMemory(outputBuffer, bufferLength, outputMemory));
+            Ref<ResultBase> result = AcquireRef(new Result(outputBuffer, bufferLength, dimensions));
+            results->Set(outputName.c_str(), result.Detach());
+            if (outputs != nullptr) {
+                const Output* output = outputs->GetRecords().at(outputName);
+                if (output->size >= bufferLength) {
+                    memcpy(output->buffer, outputBuffer, bufferLength);
+                }
+            }
+        }
+        callback(WebnnComputeStatus_Success, reinterpret_cast<WebnnNamedResults>(results.Detach()),
+                 nullptr, userdata);
+        return;
+    }
+
+    dnnl_engine_t Model::GetEngine() {
+        return reinterpret_cast<NeuralNetworkContext*>(GetContext())->GetEngine();
+    }
+
+    dnnl_status_t Model::GetMemoryDesc(dnnl_memory_t memory, const dnnl_memory_desc_t** desc) {
+        if (mMemoryReinterprets.find(memory) != mMemoryReinterprets.end()) {
+            *desc = &mMemoryReinterprets.at(memory);
+        } else {
+            DNNL_TRY(dnnl_memory_get_memory_desc(memory, desc));
+        }
+        return dnnl_success;
+    }
+
+    dnnl_status_t Model::ReorderIfNeeded(const dnnl_memory_desc_t* srcDesc,
+                                         dnnl_memory_t srcMem,
+                                         const dnnl_memory_desc_t* dstDesc,
+                                         dnnl_memory_t* userDstMem) {
+        if (!dnnl_memory_desc_equal(srcDesc, dstDesc)) {
+            dnnl_memory_t dstMem;
+            DNNL_TRY(dnnl_memory_create(&dstMem, dstDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+            dnnl_primitive_desc_t reorderDesc;
+            DNNL_TRY(dnnl_reorder_primitive_desc_create(&reorderDesc, srcDesc, GetEngine(), dstDesc,
+                                                        GetEngine(), NULL));
+            dnnl_primitive_t reorder;
+            DNNL_TRY(dnnl_primitive_create(&reorder, reorderDesc));
+            DNNL_TRY(dnnl_primitive_desc_destroy(reorderDesc));
+            std::vector<dnnl_exec_arg_t> args = {{DNNL_ARG_SRC, srcMem}, {DNNL_ARG_DST, dstMem}};
+            if (mConstantMemories.find(srcMem) != mConstantMemories.end()) {
+                dnnl_stream_t stream;
+                DNNL_TRY(dnnl_stream_create(&stream, GetEngine(), dnnl_stream_default_flags));
+
+                DNNL_TRY(dnnl_primitive_execute(reorder, stream, args.size(), args.data()));
+                DNNL_TRY(dnnl_primitive_destroy(reorder));
+            } else {
+                mOperations.push_back({reorder, args});
+            }
+            mMemories.push_back(dstMem);
+            if (userDstMem != nullptr) {
+                *userDstMem = dstMem;
+            }
+        } else {
+            if (userDstMem != nullptr) {
+                *userDstMem = srcMem;
+            }
+        }
+        return dnnl_success;
+    }
+
+    dnnl_status_t Model::ReorderToPlainFormat(dnnl_memory_t srcMem, dnnl_memory_t* dstMem) {
+        const dnnl_memory_desc_t* srcDesc;
+        DNNL_TRY(GetMemoryDesc(srcMem, &srcDesc));
+        std::vector<int32_t> dimensions(srcDesc->dims, srcDesc->dims + srcDesc->ndims);
+        std::vector<dnnl_dim_t> dims;
+        dnnl_format_tag_t tag;
+        DNNL_TRY(GetDnnlDimsAndFormartTag(dimensions.data(), dimensions.size(), dims, tag));
+        dnnl_memory_desc_t plainDesc;
+        DNNL_TRY(dnnl_memory_desc_init_by_tag(&plainDesc, dims.size(), dims.data(),
+                                              srcDesc->data_type, tag));
+        DNNL_TRY(ReorderIfNeeded(srcDesc, srcMem, &plainDesc, dstMem));
+        return dnnl_success;
+    }
+
+}}  // namespace webnn_native::onednn
