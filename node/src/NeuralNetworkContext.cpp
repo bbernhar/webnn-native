@@ -25,8 +25,8 @@ NeuralNetworkContext::NeuralNetworkContext(const Napi::CallbackInfo& info)
     : Napi::ObjectWrap<NeuralNetworkContext>(info) {
     WebnnProcTable backendProcs = webnn_native::GetProcs();
     webnnProcSetProcs(&backendProcs);
-    mContext = webnn_native::CreateNeuralNetworkContext();
-    if (mContext == nullptr) {
+    mContext = webnn::NeuralNetworkContext(webnn_native::CreateNeuralNetworkContext());
+    if (!mContext) {
         Napi::Env env = info.Env();
         Napi::Error::New(env, "Failed to create neural network context")
             .ThrowAsJavaScriptException();
@@ -34,12 +34,8 @@ NeuralNetworkContext::NeuralNetworkContext(const Napi::CallbackInfo& info)
     }
 }
 
-NeuralNetworkContext::~NeuralNetworkContext() {
-    webnnNeuralNetworkContextRelease(mContext);
-}
-
 WebnnNeuralNetworkContext NeuralNetworkContext::GetContext() {
-    return mContext;
+    return mContext.GetHandle();
 }
 
 Napi::Value NeuralNetworkContext::CreateModelBuilder(const Napi::CallbackInfo& info) {

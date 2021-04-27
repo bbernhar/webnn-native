@@ -21,7 +21,8 @@
       'target_name': 'webnn_node',
       'sources': [
         "<!@(node -p \"require('fs').readdirSync('./src').map(f=>'src/'+f).join(' ')\")",
-        "<!@(node -p \"require('fs').readdirSync('./src/ops').map(f=>'src/ops/'+f).join(' ')\")"
+        "<!@(node -p \"require('fs').readdirSync('./src/ops').map(f=>'src/ops/'+f).join(' ')\")",
+        "../../../../../<(webnn_native_lib_path)/gen/src/webnn/webnn_cpp.cpp"
       ],
       'cflags!': [ '-fno-exceptions', '-fno-rtti'],
       'cflags_cc!': [ '-fno-exceptions', '-fno-rtti'],
@@ -50,10 +51,10 @@
         '<!@(node -p "require(\'node-addon-api\').include")',
         '<(module_root_dir)/src',
         '<(WEBNN_NATIVE_DIR)/src/include',
-        '<(webnn_native_lib_path)/gen/src/include',
+        '../<(webnn_native_lib_path)/gen/src/include',
       ],
       'library_dirs' : [
-        '<(webnn_native_lib_path)',
+        '../../<(webnn_native_lib_path)',
       ],
       'libraries' : [
         '<(WEBNN_NATIVE_LIBRARY)',

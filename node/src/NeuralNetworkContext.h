@@ -16,7 +16,7 @@
 #define __NEURAL_NETWORK_CONTEXT_H__
 
 #include <napi.h>
-#include <webnn/webnn.h>
+#include <webnn/webnn_cpp.h>
 
 class NeuralNetworkContext : public Napi::ObjectWrap<NeuralNetworkContext> {
   public:
@@ -24,7 +24,7 @@ class NeuralNetworkContext : public Napi::ObjectWrap<NeuralNetworkContext> {
     static Napi::FunctionReference constructor;
 
     NeuralNetworkContext(const Napi::CallbackInfo& info);
-    ~NeuralNetworkContext();
+    ~NeuralNetworkContext() = default;
 
     // #accessors
     Napi::Value CreateModelBuilder(const Napi::CallbackInfo& info);
@@ -32,7 +32,7 @@ class NeuralNetworkContext : public Napi::ObjectWrap<NeuralNetworkContext> {
     WebnnNeuralNetworkContext GetContext();
 
   private:
-    WebnnNeuralNetworkContext mContext;
+    webnn::NeuralNetworkContext mContext;
 };
 
 #endif  // __NEURAL_NETWORK_CONTEXT_H__

@@ -34,10 +34,10 @@ To install node-gyp and other Node.js modules, please execute the following comm
 
 ### Build
 
-The `webnn_native_lib_path` must be configured so that WebNN native header files and libaries can be found when building the node addon.
+The `webnn_native_lib_path` must be configured so that WebNN native header files and libaries can be found when building the node addon. The path should be a relative path to the `node` folder. For example,
 
 ```shell script
-> npm run build --webnn_native_lib_path="/path/to/webnn-native/out/Release"
+> npm run build --webnn_native_lib_path="../out/Release"
 ```
 
 ## Test
