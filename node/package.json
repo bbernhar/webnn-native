@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build": "node-gyp configure && node-gyp build",
+    "build-debug": "node-gyp configure --debug && node-gyp build",
     "start": "http-server",
     "test": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/*/*.js third_party/webnn-polyfill/test/cts/from_nnapi/tests/cts.js third_party/webnn-polyfill/test/models/**/*.js",
     "test-api": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/api/*.js",
