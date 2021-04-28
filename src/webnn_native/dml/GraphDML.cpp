@@ -727,11 +727,7 @@ namespace webnn_native { namespace dml {
             return DAWN_INTERNAL_ERROR("l2Pool2d is not supported.");
         }
 
-<<<<<<< HEAD:src/webnn_native/dml/GraphDML.cpp
         if (options->layout == ml::InputOperandLayout::Nhwc) {
-=======
-        if (options->layout == webnn::InputOperandLayout::Nhwc) {
->>>>>>> 7e3be28 ([DML]Fix the issue for running squeezentnhwc):src/webnn_native/dml/ModelDML.cpp
             output = ::dml::Identity(ReinterpretInputLayout(NchwToNhwc, output));
         }
         mExpression.insert(std::make_pair(pool2d, output));
