@@ -287,6 +287,30 @@ namespace webnn_native { namespace onednn {
             return dnnl_success;
         }
 
+        dnnl_status_t ComputeImplicitPaddingForAutoPad(webnn::AutoPad autoPad,
+                                                       uint32_t& paddingBegin,
+                                                       uint32_t& paddingEnd,
+                                                       uint32_t dilation,
+                                                       uint32_t inputSize,
+                                                       uint32_t filterSize,
+                                                       uint32_t stride) {
+            uint32_t outSize = (inputSize + stride - 1) / stride;
+            uint32_t effectiveFilter = (filterSize - 1) * dilation + 1;
+            uint32_t neededInput = (outSize - 1) * stride + effectiveFilter;
+            uint32_t totalPadding = neededInput - inputSize > 0 ? neededInput - inputSize : 0;
+            switch (autoPad) {
+                case webnn::AutoPad::SameUpper:
+                    paddingBegin = totalPadding / 2;
+                    paddingEnd = (totalPadding + 1) / 2;
+                    return dnnl_success;
+                case webnn::AutoPad::SameLower:
+                    paddingBegin = (totalPadding + 1) / 2;
+                    paddingEnd = totalPadding / 2;
+                    return dnnl_success;
+                default:
+                    return dnnl_invalid_arguments;
+            }
+        }
     }  // anonymous namespace
 
     Graph::Graph(Context* context) : GraphBase(context) {
@@ -507,8 +531,23 @@ namespace webnn_native { namespace onednn {
         // Non-dilated convolution is defined by setting the dilation parameters to 0
         std::vector<dnnl_dim_t> dilates = {options->dilations[0] == 1 ? 0 : options->dilations[0],
                                            options->dilations[1] == 1 ? 0 : options->dilations[1]};
-        std::vector<dnnl_dim_t> padding_l = {options->padding[0], options->padding[2]};
-        std::vector<dnnl_dim_t> padding_r = {options->padding[1], options->padding[3]};
+
+        uint32_t paddingTop = static_cast<uint32_t>(options->padding[0]);
+        uint32_t paddingBottom = static_cast<uint32_t>(options->padding[1]);
+        uint32_t paddingLeft = static_cast<uint32_t>(options->padding[2]);
+        uint32_t paddingRight = static_cast<uint32_t>(options->padding[3]);
+
+        if (options->autoPad != webnn::AutoPad::Explicit) {
+            DAWN_TRY(ComputeImplicitPaddingForAutoPad(options->autoPad, paddingTop, paddingBottom,
+                                                      options->dilations[0], inputDims[2],
+                                                      filterDims[2], strides[0]));
+            DAWN_TRY(ComputeImplicitPaddingForAutoPad(options->autoPad, paddingLeft, paddingRight,
+                                                      options->dilations[1], inputDims[3],
+                                                      filterDims[3], strides[1]));
+        }
+
+        std::vector<dnnl_dim_t> padding_l = {paddingTop, paddingLeft};
+        std::vector<dnnl_dim_t> padding_r = {paddingBottom, paddingRight};
         if (options->groups != 1) {
             // FIXME(nhu): implement the grouped conv2d.
             return DAWN_INTERNAL_ERROR("Grouped conv is unimplemented.");
@@ -592,6 +631,7 @@ namespace webnn_native { namespace onednn {
         // Non-dilated convolution is defined by setting the dilation parameters to 0
         std::vector<dnnl_dim_t> dilates = {options->dilations[0] == 1 ? 0 : options->dilations[0],
                                            options->dilations[1] == 1 ? 0 : options->dilations[1]};
+
         std::vector<dnnl_dim_t> padding_l = {options->padding[0], options->padding[2]};
         std::vector<dnnl_dim_t> padding_r = {options->padding[1], options->padding[3]};
         std::vector<dnnl_dim_t> outputDims(4);
