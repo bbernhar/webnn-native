@@ -18,41 +18,45 @@
 #include <webnn_native/WebnnNative.h>
 
 #include "ModelBuilder.h"
+#include "Utils.h"
 
-Napi::FunctionReference NeuralNetworkContext::constructor;
+Napi::FunctionReference node::NeuralNetworkContext::constructor;
 
-NeuralNetworkContext::NeuralNetworkContext(const Napi::CallbackInfo& info)
-    : Napi::ObjectWrap<NeuralNetworkContext>(info) {
-    WebnnProcTable backendProcs = webnn_native::GetProcs();
-    webnnProcSetProcs(&backendProcs);
-    mContext = webnn::NeuralNetworkContext(webnn_native::CreateNeuralNetworkContext());
-    if (!mContext) {
-        Napi::Env env = info.Env();
-        Napi::Error::New(env, "Failed to create neural network context")
-            .ThrowAsJavaScriptException();
-        return;
+namespace node {
+
+    NeuralNetworkContext::NeuralNetworkContext(const Napi::CallbackInfo& info)
+        : Napi::ObjectWrap<NeuralNetworkContext>(info) {
+        WebnnProcTable backendProcs = webnn_native::GetProcs();
+        webnnProcSetProcs(&backendProcs);
+        mImpl = webnn::NeuralNetworkContext(webnn_native::CreateNeuralNetworkContext());
+        if (!mImpl) {
+            Napi::Env env = info.Env();
+            Napi::Error::New(env, "Failed to create neural network context")
+                .ThrowAsJavaScriptException();
+            return;
+        }
     }
-}
 
-WebnnNeuralNetworkContext NeuralNetworkContext::GetContext() {
-    return mContext.GetHandle();
-}
+    webnn::NeuralNetworkContext NeuralNetworkContext::GetImpl() {
+        return mImpl;
+    }
 
-Napi::Value NeuralNetworkContext::CreateModelBuilder(const Napi::CallbackInfo& info) {
-    std::vector<napi_value> args = {info.This().As<Napi::Value>()};
-    Napi::Object modelBuilder = ModelBuilder::constructor.New(args);
+    Napi::Value NeuralNetworkContext::CreateModelBuilder(const Napi::CallbackInfo& info) {
+        //  ModelBuilder createModelBuilder();
+        WEBNN_NODE_ASSERT(info.Length() == 0, "The number of arguments is invalid.");
+        Napi::Object builder = ModelBuilder::constructor.New({info.This()});
+        return builder;
+    }
 
-    return modelBuilder;
-}
-
-Napi::Object NeuralNetworkContext::Initialize(Napi::Env env, Napi::Object exports) {
-    Napi::HandleScope scope(env);
-    Napi::Function func =
-        DefineClass(env, "NeuralNetworkContext",
-                    {InstanceMethod("createModelBuilder", &NeuralNetworkContext::CreateModelBuilder,
-                                    napi_enumerable)});
-    constructor = Napi::Persistent(func);
-    constructor.SuppressDestruct();
-    exports.Set("NeuralNetworkContext", func);
-    return exports;
-}
+    Napi::Object NeuralNetworkContext::Initialize(Napi::Env env, Napi::Object exports) {
+        Napi::HandleScope scope(env);
+        Napi::Function func = DefineClass(
+            env, "NeuralNetworkContext",
+            {InstanceMethod("createModelBuilder", &NeuralNetworkContext::CreateModelBuilder,
+                            napi_enumerable)});
+        constructor = Napi::Persistent(func);
+        constructor.SuppressDestruct();
+        exports.Set("NeuralNetworkContext", func);
+        return exports;
+    }
+}  // namespace node

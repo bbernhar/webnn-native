@@ -12,35 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __OPS_CONSTANT_H_
-#define __OPS_CONSTANT_H_
+#ifndef NODE_OPS_CONSTANT_H_
+#define NODE_OPS_CONSTANT_H_
 
 #include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-#include "ops/OperandBase.h"
+namespace node { namespace op {
 
-namespace op {
-
-    union Scalar {
-        float floatValue;
-        int32_t int32Value;
-        uint32_t uint32Value;
+    struct Constant {
+        static Napi::Value Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder);
     };
 
-    class Constant final : public OperandBase {
-      public:
-        Constant(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder);
-        ~Constant() = default;
+}}  // namespace node::op
 
-      private:
-        WebnnOperandDescriptor mDescriptor;
-        std::vector<int32_t> mDimensions;
-        Napi::ObjectReference mConstantReference;
-        void const* mValue;
-        size_t mSize;
-        Scalar mScalarValue;
-    };
-
-}  // namespace op
-
-#endif  // __OPS_CONSTANT_H_
+#endif  // NODE_OPS_CONSTANT_H_

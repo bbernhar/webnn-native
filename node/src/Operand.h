@@ -12,24 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __OPERAND_H__
-#define __OPERAND_H__
+#ifndef NODE_OPERAND_H_
+#define NODE_OPERAND_H_
 
-#include "ops/OperandBase.h"
+#include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-class Operand : public Napi::ObjectWrap<Operand> {
-  public:
-    static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
-    static Napi::FunctionReference constructor;
+namespace node {
 
-    explicit Operand(const Napi::CallbackInfo& info);
-    ~Operand() = default;
+    class ModelBuilder;
 
-    void SetOperand(std::shared_ptr<op::OperandBase>);
-    WebnnOperand GetOperand();
+    class Operand : public Napi::ObjectWrap<Operand> {
+      public:
+        static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
+        static Napi::FunctionReference constructor;
 
-  private:
-    std::shared_ptr<op::OperandBase> mOperand;
-};
+        explicit Operand(const Napi::CallbackInfo& info);
+        ~Operand() = default;
 
-#endif  // __OPERAND_H__
+        webnn::Operand GetImpl() const;
+        void SetImpl(const webnn::Operand& operand);
+
+      private:
+        webnn::Operand mImpl;
+    };
+
+}  // namespace node
+
+#endif  // NODE_OPERAND_H_

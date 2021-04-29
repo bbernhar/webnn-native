@@ -12,81 +12,110 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Conv2d.h"
+#include "ops/Conv2d.h"
 
-#include <napi.h>
-#include <iostream>
-#include <unordered_map>
-
+#include "Operand.h"
 #include "Utils.h"
 
-namespace op {
+namespace node { namespace op {
 
-    Conv2d::Conv2d(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder) : mOptions({}) {
-        const auto& inputs = GetInputs(info);
-        if (inputs.size() != 2) {
-            WEBNN_THROW(info.Env(), "The operation need two inputs.");
-            return;
+    struct Conv2dOptions {
+      public:
+        std::vector<int32_t> padding;
+        std::vector<int32_t> strides;
+        std::vector<int32_t> dilations;
+        int32_t groups = 1;
+        webnn::AutoPad autoPad = webnn::AutoPad::Explicit;
+        webnn::InputOperandLayout inputLayout = webnn::InputOperandLayout::Nchw;
+        webnn::FilterOperandLayout filterLayout = webnn::FilterOperandLayout::Oihw;
+
+        const webnn::Conv2dOptions* AsPtr() {
+            if (!padding.empty()) {
+                mOptions.paddingCount = padding.size();
+                mOptions.padding = padding.data();
+            }
+            if (!strides.empty()) {
+                mOptions.stridesCount = strides.size();
+                mOptions.strides = strides.data();
+            }
+            if (!dilations.empty()) {
+                mOptions.dilationsCount = dilations.size();
+                mOptions.dilations = dilations.data();
+            }
+            mOptions.groups = groups;
+            mOptions.autoPad = autoPad;
+            mOptions.inputLayout = inputLayout;
+            mOptions.filterLayout = filterLayout;
+            return &mOptions;
         }
 
-        // There is some option in the struct to parse.
-        if (info.Length() == 3) {
-            if (!info[2].IsObject()) {
-                WEBNN_THROW(info.Env(), "The option argument must be Object.");
-                return;
+      private:
+        webnn::Conv2dOptions mOptions;
+    };
+
+    Napi::Value Conv2d::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // Operand conv2d(Operand input, Operand filter, optional Conv2dOptions options = {});
+        WEBNN_NODE_ASSERT(info.Length() == 2 || info.Length() == 3,
+                          "The number of arguments is invalid.");
+
+        webnn::Operand input;
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+        webnn::Operand filter;
+        WEBNN_NODE_ASSERT(GetOperand(info[1], filter), "The filter parameter is invalid.");
+
+        webnn::Operand conv2d;
+        if (info.Length() == 2) {
+            conv2d = builder.Conv2d(input, filter);
+        } else if (info.Length() == 3) {
+            // dictionary Conv2dOptions {
+            //   sequence<long> padding;
+            //   sequence<long> strides;
+            //   sequence<long> dilations;
+            //   AutoPad autoPad = "explicit";
+            //   long groups = 1;
+            //   InputOperandLayout inputLayout = "nchw";
+            //   FilterOperandLayout filterLayout = "oihw";
+            // };
+            Conv2dOptions options;
+            WEBNN_NODE_ASSERT(info[2].IsObject(), "The options must be an object.");
+            Napi::Object jsOptions = info[2].As<Napi::Object>();
+            if (HasOptionMember(jsOptions, "padding")) {
+                WEBNN_NODE_ASSERT(GetInt32Array(jsOptions.Get("padding"), options.padding, 4),
+                                  "The padding parameter is invalid.");
             }
-            Napi::Object obj = info[2].As<Napi::Object>();
-            Napi::Array propertyNames = obj.GetPropertyNames();
-            for (size_t j = 0; j < propertyNames.Length(); ++j) {
-                std::string name = propertyNames.Get(j).As<Napi::String>().Utf8Value();
-                Napi::Value item = static_cast<Napi::Value>(obj.Get(name));
-                if (name == "padding") {
-                    mPadding = GetDimensions(item);
-                    if (mPadding.size() != 4) {
-                        WEBNN_THROW(info.Env(), "Failed to get dimensions.");
-                        return;
-                    }
-                    mOptions.padding = mPadding.data();
-                    mOptions.paddingCount = mPadding.size();
-                } else if (name == "strides") {
-                    mStride = GetDimensions(item);
-                    if (mStride.size() != 2) {
-                        WEBNN_THROW(info.Env(), "Failed to get dimensions.");
-                        return;
-                    }
-                    mOptions.strides = mStride.data();
-                    mOptions.stridesCount = mStride.size();
-                } else if (name == "dilations") {
-                    mDilations = GetDimensions(item);
-                    if (mDilations.size() != 2) {
-                        WEBNN_THROW(info.Env(), "Failed to get dimensions.");
-                        return;
-                    }
-                    mOptions.dilations = mDilations.data();
-                    mOptions.dilationsCount = mDilations.size();
-                } else if (name == "groups") {
-                    if (!item.IsNumber()) {
-                        WEBNN_THROW(info.Env(), "The groups must be number.");
-                        return;
-                    } else {
-                        mOptions.groups = item.As<Napi::Number>().Int32Value();
-                    }
-                } else if (name == "layout") {
-                    if (!item.IsString()) {
-                        WEBNN_THROW(info.Env(), "The layout must be string.");
-                        return;
-                    } else {
-                        mOptions.inputLayout = static_cast<WebnnInputOperandLayout>(
-                            OperandLayout(item.As<Napi::String>().Utf8Value()));
-                    }
-                } else {
-                    WEBNN_THROW(info.Env(), "The option isn't supported.");
-                    return;
-                }
+            if (HasOptionMember(jsOptions, "strides")) {
+                WEBNN_NODE_ASSERT(GetInt32Array(jsOptions.Get("strides"), options.strides, 2),
+                                  "The strides parameter is invalid.");
             }
+            if (HasOptionMember(jsOptions, "dilations")) {
+                WEBNN_NODE_ASSERT(GetInt32Array(jsOptions.Get("dilations"), options.dilations, 2),
+                                  "The dilations parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "groups")) {
+                WEBNN_NODE_ASSERT(GetInt32(jsOptions.Get("groups"), options.groups),
+                                  "The groups parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "inputLayout")) {
+                WEBNN_NODE_ASSERT(
+                    GetInputOperandLayout(jsOptions.Get("inputLayout"), options.inputLayout),
+                    "The inputLayout parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "filterLayout")) {
+                WEBNN_NODE_ASSERT(
+                    GetFilterOperandLayout(jsOptions.Get("filterLayout"), options.filterLayout),
+                    "The filterLayout parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "autoPad")) {
+                WEBNN_NODE_ASSERT(GetAutopad(jsOptions.Get("autoPad"), options.autoPad),
+                                  "The autoPad parameter is invalid.");
+            }
+            conv2d = builder.Conv2d(input, filter, options.AsPtr());
         }
-        OperandBase::SetOperand(
-            webnnModelBuilderConv2d(modelBuilder, inputs[0], inputs[1], &mOptions));
+
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(conv2d);
+        return object;
     }
 
-}  // namespace op
+}}  // namespace node::op

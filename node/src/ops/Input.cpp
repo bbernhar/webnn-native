@@ -14,51 +14,23 @@
 
 #include "ops/Input.h"
 
-#include <iostream>
-#include <unordered_map>
-
 #include "Utils.h"
 
-namespace op {
+namespace node { namespace op {
 
-    Input::Input(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder)
-        : OperandBase(), mDescriptor({}) {
-        Napi::Env env = info.Env();
-        if (info.Length() != 2) {
-            WEBNN_THROW(env, "Input operation need two arguments.");
-            return;
-        }
-        // name
-        if (!info[0].IsString()) {
-            WEBNN_THROW(env, "The first argument must be String.");
-            return;
-        }
-        mName = info[0].As<Napi::String>().Utf8Value();
+    Napi::Value Input::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // Operand input(DOMString name, OperandDescriptor desc);
+        WEBNN_NODE_ASSERT(info.Length() == 2, "The number of arguments is invalid.");
+        std::string name;
+        WEBNN_NODE_ASSERT(GetString(info[0], name), "The name must be a string.");
 
-        // operandDescriptor
-        if (!info[1].IsObject()) {
-            WEBNN_THROW(env, "The second argument must be Object.");
-            return;
-        }
-        Napi::Object inputDescriptor = info[1].As<Napi::Object>();
-        mDescriptor.type = OperandType(inputDescriptor.Get("type"));
-        if (mDescriptor.type == WebnnOperandType_Force32) {
-            WEBNN_THROW(env, "The type of operand descriptor isn't expected.");
-            return;
-        }
-        // dimensions
-        if (inputDescriptor.Has("dimensions")) {
-            Napi::Value value = inputDescriptor.Get("dimensions");
-            mDimensions = GetDimensions(value);
-            if (mDimensions.size() == 0) {
-                WEBNN_THROW(info.Env(), "Failed to get dimensions.");
-                return;
-            }
-            mDescriptor.dimensions = mDimensions.data();
-            mDescriptor.dimensionsCount = mDimensions.size();
-        }
+        OperandDescriptor desc;
+        WEBNN_NODE_ASSERT(GetOperandDescriptor(info[1], desc), "The desc parameter is invalid.");
 
-        OperandBase::SetOperand(webnnModelBuilderInput(modelBuilder, mName.c_str(), &mDescriptor));
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(builder.Input(name.c_str(), desc.AsPtr()));
+        return object;
     }
 
-}  // namespace op
+}}  // namespace node::op

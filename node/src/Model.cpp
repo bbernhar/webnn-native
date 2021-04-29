@@ -14,102 +14,100 @@
 
 #include "Model.h"
 
-#include <iostream>
+#include "Utils.h"
 
 #include "Compilation.h"
 
-class CompilationAsyncWorker : public Napi::AsyncWorker {
-  public:
-    CompilationAsyncWorker(Napi::Env& env,
+namespace node {
+
+    class CompileAsyncWorker : public Napi::AsyncWorker {
+      public:
+        CompileAsyncWorker(Napi::Env& env,
                            Napi::Promise::Deferred& deferred,
-                           WebnnModel model,
-                           std::vector<std::string> outputName)
-        : Napi::AsyncWorker(env),
-          mEnv(env),
-          mDeferred(deferred),
-          mModel(model),
-          mOutputName(std::move(outputName)) {
-    }
-
-    ~CompilationAsyncWorker(){};
-
-    void Execute() {
-        webnnModelCompile(
-            mModel,
-            [](WebnnCompileStatus status, WebnnCompilation compilation, char const* message,
-               void* userData) {
-                CompilationAsyncWorker* asyncWorker =
-                    reinterpret_cast<CompilationAsyncWorker*>(userData);
-                asyncWorker->SetCompilation(compilation);
-            },
-            reinterpret_cast<void*>(this), nullptr);
-    }
-
-    void OnOK() {
-        if (mCompilation == nullptr) {
-            return mDeferred.Resolve(Env().Null());
+                           webnn::Model model,
+                           const std::vector<std::string>& outputNames)
+            : Napi::AsyncWorker(env),
+              mEnv(env),
+              mDeferred(deferred),
+              mModel(model),
+              mOutputNames(outputNames) {
         }
-        Napi::Object obj = Compilation::constructor.New({});
-        Compilation* unwapper = Napi::ObjectWrap<Compilation>::Unwrap(obj);
-        unwapper->SetCompilation(mCompilation);
-        unwapper->SetOutputName(std::move(mOutputName));
-        mDeferred.Resolve(obj);
+
+        ~CompileAsyncWorker() = default;
+
+        void Execute() {
+            mModel.Compile(
+                [](WebnnCompileStatus status, WebnnCompilation compilation, char const* message,
+                   void* userData) {
+                    CompileAsyncWorker* asyncWorker =
+                        reinterpret_cast<CompileAsyncWorker*>(userData);
+                    asyncWorker->SetCompilation(status, compilation, message);
+                },
+                reinterpret_cast<void*>(this), nullptr);
+        }
+
+        void OnOK() {
+            if (mStatus != webnn::CompileStatus::Success) {
+                return mDeferred.Reject(Napi::Value::From(mEnv, mMessage));
+            }
+            Napi::Object object = Compilation::constructor.New({});
+            Compilation* compilation = Napi::ObjectWrap<Compilation>::Unwrap(object);
+            compilation->mImpl = mCompilation;
+            compilation->mOutputNames = std::move(mOutputNames);
+            mDeferred.Resolve(object);
+        }
+
+        void SetCompilation(WebnnCompileStatus status,
+                            WebnnCompilation compilation,
+                            char const* message) {
+            mStatus = static_cast<webnn::CompileStatus>(status);
+            mCompilation = mCompilation.Acquire(compilation);
+            if (message) {
+                mMessage = std::string(message);
+            }
+        }
+
+      private:
+        Napi::Env mEnv;
+        Napi::Promise::Deferred mDeferred;
+        webnn::Model mModel;
+        std::vector<std::string> mOutputNames;
+        webnn::CompileStatus mStatus;
+        std::string mMessage;
+        webnn::Compilation mCompilation;
+    };
+
+    Napi::FunctionReference Model::constructor;
+
+    Model::Model(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Model>(info) {
     }
 
-  private:
-    void SetCompilation(WebnnCompilation compilation) {
-        mCompilation = compilation;
+    webnn::Model Model::GetImpl() {
+        return mImpl;
     }
 
-    Napi::Env mEnv;
-    Napi::Promise::Deferred mDeferred;
-    WebnnModel mModel;
-    std::vector<std::string> mOutputName;
-    WebnnCompilation mCompilation;
-};
+    Napi::Value Model::Compile(const Napi::CallbackInfo& info) {
+        // Promise<Compilation> compile(optional CompilationOptions options = {});
+        WEBNN_NODE_ASSERT(info.Length() == 0 || info.Length() == 1,
+                          "The number of arguments is invalid.");
 
-Napi::FunctionReference Model::constructor;
+        // FIXME: handle CompilationOptions.
 
-Model::Model(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Model>(info) {
-    Napi::Object obj = info[0].As<Napi::Object>();
-    Napi::Array propertyNames = obj.GetPropertyNames();
-    for (size_t j = 0; j < propertyNames.Length(); ++j) {
-        std::string name = propertyNames.Get(j).As<Napi::String>().Utf8Value();
-        mOutputName.push_back(name);
+        Napi::Env env = info.Env();
+        auto deferred = Napi::Promise::Deferred::New(env);
+        CompileAsyncWorker* worker = new CompileAsyncWorker(env, deferred, mImpl, mOutputNames);
+        worker->Queue();
+        return deferred.Promise();
     }
-}
 
-Model::~Model() {
-    if (mModel) {
-        webnnModelRelease(mModel);
+    Napi::Object Model::Initialize(Napi::Env env, Napi::Object exports) {
+        Napi::HandleScope scope(env);
+        Napi::Function func = DefineClass(
+            env, "Model", {InstanceMethod("compile", &Model::Compile, napi_enumerable)});
+        constructor = Napi::Persistent(func);
+        constructor.SuppressDestruct();
+        exports.Set("Model", func);
+        return exports;
     }
-}
 
-void Model::SetModel(WebnnModel model) {
-    mModel = model;
-}
-
-WebnnModel Model::GetModel() {
-    return mModel;
-}
-
-Napi::Value Model::Compile(const Napi::CallbackInfo& info) {
-    Napi::Env env = info.Env();
-
-    auto deferred = Napi::Promise::Deferred::New(env);
-    CompilationAsyncWorker* mCompilationWorker =
-        new CompilationAsyncWorker(env, deferred, mModel, std::move(mOutputName));
-    mCompilationWorker->Queue();
-
-    return deferred.Promise();
-}
-
-Napi::Object Model::Initialize(Napi::Env env, Napi::Object exports) {
-    Napi::HandleScope scope(env);
-    Napi::Function func =
-        DefineClass(env, "Model", {InstanceMethod("compile", &Model::Compile, napi_enumerable)});
-    constructor = Napi::Persistent(func);
-    constructor.SuppressDestruct();
-    exports.Set("Model", func);
-    return exports;
-}
+}  // namespace node

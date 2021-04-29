@@ -1,77 +1,73 @@
-#include "Gemm.h"
-#include <iostream>
+// Copyright 2021 The WebNN-native Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include <assert.h>
-#include <iostream>
-#include <unordered_map>
+#include "ops/Gemm.h"
+
+#include "Operand.h"
 #include "Utils.h"
 
-namespace op {
-    Gemm::Gemm(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder) {
-        const auto& inputs = GetInputs(info);
-        if (inputs.size() != 2) {
-            WEBNN_THROW(info.Env(), "The operation need two inputs.");
-            return;
-        }
+namespace node { namespace op {
 
-        WebnnGemmOptions options;
-        options.alpha = 1.0;
-        options.beta = 1.0;
-        options.aTranspose = false;
-        options.bTranspose = false;
-        options.c = NULL;
-        if (info.Length() == 3) {
-            Napi::Value value = static_cast<Napi::Value>(info[2]);
-            if (!value.IsObject()) {
-                WEBNN_THROW(info.Env(), "The third parameter shoud be a object");
-                return;
+    Napi::Value Gemm::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // Operand gemm(Operand a, Operand b, optional GemmOptions options = {});
+        WEBNN_NODE_ASSERT(info.Length() == 2 || info.Length() == 3,
+                          "The number of arguments is invalid.");
+
+        webnn::Operand a;
+        WEBNN_NODE_ASSERT(GetOperand(info[0], a), "The a parameter is invalid.");
+        webnn::Operand b;
+        WEBNN_NODE_ASSERT(GetOperand(info[1], b), "The a parameter is invalid.");
+
+        webnn::Operand gemm;
+        if (info.Length() == 2) {
+            gemm = builder.Gemm(a, b);
+        } else {
+            // dictionary GemmOptions {
+            //   Operand c;
+            //   float alpha = 1.0;
+            //   float beta = 1.0;
+            //   boolean aTranspose = false;
+            //   boolean bTranspose = false;
+            // };
+            webnn::GemmOptions options;
+            WEBNN_NODE_ASSERT(info[2].IsObject(), "The options must be an object.");
+            Napi::Object jsOptions = info[2].As<Napi::Object>();
+            if (HasOptionMember(jsOptions, "c")) {
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("c"), options.c),
+                                  "The c parameter is invalid.");
             }
-            Napi::Object obj = value.As<Napi::Object>();
-            Napi::Array propertyNames = obj.GetPropertyNames();
-            for (size_t j = 0; j < propertyNames.Length(); ++j) {
-                std::string name = propertyNames.Get(j).As<Napi::String>().Utf8Value();
-                if (name == "alpha") {
-                    if (!obj.Get(name).IsNumber()) {
-                        WEBNN_THROW(info.Env(), "The parameter 'a' should be a number");
-                        return;
-                    }
-
-                    options.alpha = obj.Get(name).As<Napi::Number>().FloatValue();
-                } else if (name == "beta") {
-                    if (!obj.Get(name).IsNumber()) {
-                        WEBNN_THROW(info.Env(), "The parameter 'b' should be a number");
-                        return;
-                    }
-
-                    options.beta = obj.Get(name).As<Napi::Number>().FloatValue();
-                } else if (name == "aTranspose") {
-                    if (!obj.Get(name).IsBoolean()) {
-                        WEBNN_THROW(info.Env(), "The parameter 'aTranspose' should be a boolean");
-                        return;
-                    }
-
-                    options.aTranspose = obj.Get(name).As<Napi::Boolean>().Value();
-                } else if (name == "bTranspose") {
-                    if (!obj.Get(name).IsBoolean()) {
-                        WEBNN_THROW(info.Env(), "The parameter 'bTranspose' should be a boolean");
-                        return;
-                    }
-
-                    options.bTranspose = obj.Get(name).As<Napi::Boolean>().Value();
-                } else if (name == "c") {
-                    Napi::Object c = obj.Get(name).As<Napi::Object>();
-                    if (c.InstanceOf(Operand::constructor.Value())) {
-                        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(c);
-                        options.c = operand->GetOperand();
-                    }
-                } else {
-                    WEBNN_THROW(info.Env(), "The option isn't supported.");
-                    return;
-                }
+            if (HasOptionMember(jsOptions, "alpha")) {
+                WEBNN_NODE_ASSERT(GetFloat(jsOptions.Get("alpha"), options.alpha),
+                                  "The alpha parameter is invalid.");
             }
+            if (HasOptionMember(jsOptions, "beta")) {
+                WEBNN_NODE_ASSERT(GetFloat(jsOptions.Get("beta"), options.beta),
+                                  "The beta parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "aTranspose")) {
+                WEBNN_NODE_ASSERT(GetBoolean(jsOptions.Get("aTranspose"), options.aTranspose),
+                                  "The aTranspose parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "bTranspose")) {
+                WEBNN_NODE_ASSERT(GetBoolean(jsOptions.Get("bTranspose"), options.bTranspose),
+                                  "The bTranspose parameter is invalid.");
+            }
+            gemm = builder.Gemm(a, b, &options);
         }
-
-        OperandBase::SetOperand(
-            webnnModelBuilderGemm(modelBuilder, inputs[0], inputs[1], &options));
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(gemm);
+        return object;
     }
-}  // namespace op
+}}  // namespace node::op

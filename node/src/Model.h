@@ -12,29 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __Model_H__
-#define __Model_H__
+#ifndef NODE_MODEL_H_
+#define NODE_MODEL_H_
 
 #include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-#include <webnn/webnn.h>
+namespace node {
 
-class Model : public Napi::ObjectWrap<Model> {
-  public:
-    static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
-    static Napi::FunctionReference constructor;
+    class ModelBuilder;
 
-    explicit Model(const Napi::CallbackInfo& info);
-    ~Model();
-    void SetModel(WebnnModel);
-    WebnnModel GetModel();
+    class Model : public Napi::ObjectWrap<Model> {
+      public:
+        static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
+        static Napi::FunctionReference constructor;
 
-    Napi::Value Compile(const Napi::CallbackInfo& info);
+        explicit Model(const Napi::CallbackInfo& info);
+        ~Model() = default;
 
-  private:
-    WebnnModel mModel;
-    WebnnCompilation mCompilation;
-    std::vector<std::string> mOutputName;
-};
+        webnn::Model GetImpl();
 
-#endif  // __Model_H__
+      private:
+        friend ModelBuilder;
+
+        Napi::Value Compile(const Napi::CallbackInfo& info);
+
+        webnn::Model mImpl;
+        std::vector<std::string> mOutputNames;
+    };
+
+}  // namespace node
+
+#endif  // NODE_MODEL_H_

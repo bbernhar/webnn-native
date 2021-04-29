@@ -12,35 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Reshape.h"
+#include "ops/Reshape.h"
 
 #include "Utils.h"
 
-namespace op {
+namespace node { namespace op {
 
-    Reshape::Reshape(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder)
-        : mNewShape({}) {
-        const auto& inputs = GetInputs(info);
-        if (inputs.size() != 1) {
-            WEBNN_THROW(info.Env(), "The operation need one inputs.");
-            return;
-        }
+    Napi::Value Reshape::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // Operand reshape(Operand input, sequence<long> newShape);
+        WEBNN_NODE_ASSERT(info.Length() == 2, "The number of arguments is invalid.");
 
-        // There is some option in the struct to parse.
-        if (info.Length() == 2) {
-            if (!info[1].IsObject()) {
-                WEBNN_THROW(info.Env(), "The option argument must be Object.");
-                return;
-            }
-            mNewShape = GetDimensions(info[1].As<Napi::Object>());
-            if (mNewShape.size() == 0) {
-                WEBNN_THROW(info.Env(), "Failed to get dimensions.");
-                return;
-            }
-        }
+        webnn::Operand input;
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        OperandBase::SetOperand(
-            webnnModelBuilderReshape(modelBuilder, inputs[0], mNewShape.data(), mNewShape.size()));
+        std::vector<int32_t> newShape;
+        WEBNN_NODE_ASSERT(GetInt32Array(info[1], newShape), "The newShape parameter is invalid.");
+
+        webnn::Operand reshape = builder.Reshape(input, newShape.data(), newShape.size());
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(reshape);
+        return object;
     }
 
-}  // namespace op
+}}  // namespace node::op

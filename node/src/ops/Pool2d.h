@@ -12,31 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ___OPS_POOL2D_H__
-#define ___OPS_POOL2D_H__
+#ifndef NODE_OPS_POOL2D_H_
+#define NODE_OPS_POOL2D_H_
 
-#include "OperandBase.h"
+#include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-namespace op {
+namespace node { namespace op {
+
     enum Pool2dType {
         kAveragePool2d = 0,
         kL2Pool2d,
         kMaxPool2d,
     };
 
-    class Pool2d final : public OperandBase {
-      public:
-        Pool2d(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder, Pool2dType type);
-        ~Pool2d() = default;
-
-      private:
-        WebnnPool2dOptions mOptions;
-        std::vector<int32_t> mWindowDimensions;
-        std::vector<int32_t> mPadding;
-        std::vector<int32_t> mStride;
-        std::vector<int32_t> mDilations;
+    struct Pool2d {
+        static Napi::Value Build(const Napi::CallbackInfo& info,
+                                 webnn::ModelBuilder builder,
+                                 Pool2dType type);
     };
 
-}  // namespace op
+}}  // namespace node::op
 
-#endif  // ___OPS_POOL2D_H__
+#endif  // NODE_OPS_POOL2D_H_

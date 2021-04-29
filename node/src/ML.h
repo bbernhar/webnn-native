@@ -12,21 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __ML_H__
-#define __ML_H__
+#ifndef NODE_ML_H__
+#define NODE_ML_H__
 
 #include <napi.h>
 
-class ML : public Napi::ObjectWrap<ML> {
-  public:
-    static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
-    static Napi::FunctionReference constructor;
+namespace node {
 
-    ML(const Napi::CallbackInfo& info);
-    ~ML();
+    class ML : public Napi::ObjectWrap<ML> {
+      public:
+        static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
+        static Napi::FunctionReference constructor;
 
-  private:
-    static Napi::Value GetNeuralNetworkContext(const Napi::CallbackInfo& info);
-};
+        ML(const Napi::CallbackInfo& info);
+        ~ML() = default;
 
-#endif  // __ML_H__
+      private:
+        static Napi::Value GetNeuralNetworkContext(const Napi::CallbackInfo& info);
+    };
+
+}  // namespace node
+
+#endif  // NODE_ML_H__

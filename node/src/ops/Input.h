@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __OPS_INPUT_H_
-#define __OPS_INPUT_H_
+#ifndef NODE_OPS_INPUT_H_
+#define NODE_OPS_INPUT_H_
 
-#include <memory>
-#include <string>
+#include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-#include "OperandBase.h"
+namespace node { namespace op {
 
-namespace op {
-
-    class Input final : public OperandBase {
-      public:
-        Input(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder);
-        ~Input() = default;
-
-      private:
-        std::string mName;
-        std::vector<int32_t> mDimensions;
-        WebnnOperandDescriptor mDescriptor;
+    struct Input {
+        static Napi::Value Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder);
     };
 
-}  // namespace op
+}}  // namespace node::op
 
-#endif  // __OPS_INPUT_H_
+#endif  // NODE_OPS_INPUT_H_

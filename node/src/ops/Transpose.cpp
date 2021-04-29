@@ -12,49 +12,44 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Transpose.h"
-
-#include <iostream>
+#include "ops/Transpose.h"
 
 #include "Utils.h"
 
-namespace op {
+namespace node { namespace op {
 
-    Transpose::Transpose(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder)
-        : mOptions({}) {
-        const auto& inputs = GetInputs(info);
-        if (inputs.size() != 1) {
-            WEBNN_THROW(info.Env(), "The operation need one inputs.");
-            return;
-        }
+    Napi::Value Transpose::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // dictionary TransposeOptions {
+        //   sequence<long> permutation;
+        // };
 
-        // There is some option in the struct to parse.
-        if (info.Length() == 2) {
-            if (!info[1].IsObject()) {
-                WEBNN_THROW(info.Env(), "The option argument must be Object.");
-                return;
+        // Operand transpose(Operand input, optional TransposeOptions options = {});
+        WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
+                          "The number of arguments is invalid.");
+
+        webnn::Operand input;
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+
+        webnn::Operand transpose;
+        if (info.Length() == 1) {
+            transpose = builder.Transpose(input);
+        } else {
+            webnn::TransposeOptions options;
+            std::vector<int32_t> permutation;
+            WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
+            Napi::Object jsOptions = info[1].As<Napi::Object>();
+            if (HasOptionMember(jsOptions, "permutation")) {
+                WEBNN_NODE_ASSERT(GetInt32Array(jsOptions.Get("permutation"), permutation),
+                                  "The permutation parameter is invalid.");
+                options.permutation = permutation.data();
+                options.permutationCount = permutation.size();
             }
-            Napi::Object obj = info[1].As<Napi::Object>();
-            Napi::Array propertyNames = obj.GetPropertyNames();
-            for (size_t j = 0; j < propertyNames.Length(); ++j) {
-                std::string name = propertyNames.Get(j).As<Napi::String>().Utf8Value();
-                Napi::Value item = static_cast<Napi::Value>(obj.Get(name));
-                if (name == "permutation") {
-                    mPermutation = GetDimensions(item);
-                    if (mPermutation.size() != 4) {
-                        WEBNN_THROW(info.Env(), "Failed to get dimensions.");
-                        return;
-                    }
-                    mOptions.permutation = mPermutation.data();
-                    mOptions.permutationCount = mPermutation.size();
-                } else {
-                    WEBNN_THROW(info.Env(), "The option isn't supported.");
-                    return;
-                }
-            }
+            transpose = builder.Transpose(input, &options);
         }
-
-        OperandBase::SetOperand(webnnModelBuilderTranspose(modelBuilder, inputs[0], &mOptions));
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(transpose);
+        return object;
     }
 
-}  // namespace op
+}}  // namespace node::op

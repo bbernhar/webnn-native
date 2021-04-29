@@ -12,29 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "Operand.h"
+#include "ML.h"
 
-Napi::FunctionReference node::Operand::constructor;
+#include "NeuralNetworkContext.h"
+
+Napi::FunctionReference node::ML::constructor;
 
 namespace node {
 
-    Operand::Operand(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Operand>(info) {
+    ML::ML(const Napi::CallbackInfo& info) : Napi::ObjectWrap<ML>(info) {
     }
 
-    webnn::Operand Operand::GetImpl() const {
-        return mImpl;
+    Napi::Value ML::GetNeuralNetworkContext(const Napi::CallbackInfo& info) {
+        Napi::Object context =
+            NeuralNetworkContext::constructor.New({info.This().As<Napi::Value>()});
+        return context;
     }
 
-    void Operand::SetImpl(const webnn::Operand& operand) {
-        mImpl = operand;
-    }
-
-    Napi::Object Operand::Initialize(Napi::Env env, Napi::Object exports) {
+    Napi::Object ML::Initialize(Napi::Env env, Napi::Object exports) {
         Napi::HandleScope scope(env);
-        Napi::Function func = DefineClass(env, "Operand", {});
+        Napi::Function func =
+            DefineClass(env, "ml",
+                        {StaticMethod("getNeuralNetworkContext", &ML::GetNeuralNetworkContext,
+                                      napi_enumerable)});
         constructor = Napi::Persistent(func);
         constructor.SuppressDestruct();
-        exports.Set("Operand", func);
+        exports.Set("ml", func);
         return exports;
     }
 

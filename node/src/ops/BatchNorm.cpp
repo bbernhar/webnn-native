@@ -1,69 +1,72 @@
-#include "BatchNorm.h"
+// Copyright 2021 The WebNN-native Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include <napi.h>
-#include <iostream>
+#include "ops/BatchNorm.h"
+
 #include "Operand.h"
 #include "Utils.h"
 
-namespace op {
-    BatchNorm::BatchNorm(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder) {
-        const auto& inputs = GetInputs(info);
-        if (inputs.size() != 3) {
-            WEBNN_THROW(info.Env(), "The op needs three inputs.");
-            return;
+namespace node { namespace op {
+
+    Napi::Value BatchNorm::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // Operand batchNormalization(Operand input, Operand mean, Operand variance,
+        //                            optional BatchNormalizationOptions options = {});
+        WEBNN_NODE_ASSERT(info.Length() == 3 || info.Length() == 4,
+                          "The number of arguments is invalid.");
+
+        webnn::Operand input;
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+        webnn::Operand mean;
+        WEBNN_NODE_ASSERT(GetOperand(info[1], mean), "The mean parameter is invalid.");
+        webnn::Operand variance;
+        WEBNN_NODE_ASSERT(GetOperand(info[2], variance), "The variance parameter is invalid.");
+
+        webnn::Operand batchNorm;
+        if (info.Length() == 3) {
+            batchNorm = builder.BatchNorm(input, mean, variance);
+        } else if (info.Length() == 4) {
+            // dictionary BatchNormalizationOptions {
+            //   Operand scale;
+            //   Operand bias;
+            //   long axis = 1;
+            //   float epsilon = 1e-5;
+            // };
+            webnn::BatchNormOptions options;
+            WEBNN_NODE_ASSERT(info[3].IsObject(), "The options must be an object.")
+            Napi::Object jsOptions = info[3].As<Napi::Object>();
+            if (HasOptionMember(jsOptions, "scale")) {
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("scale"), options.scale),
+                                  "The scale parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "bias")) {
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("bias"), options.bias),
+                                  "The bias parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "axis")) {
+                WEBNN_NODE_ASSERT(GetUint32(jsOptions.Get("axis"), options.axis),
+                                  "The axis parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "epsilon")) {
+                WEBNN_NODE_ASSERT(GetFloat(jsOptions.Get("epsilon"), options.epsilon),
+                                  "The epsilon parameter is invalid.");
+            }
+            batchNorm = builder.BatchNorm(input, mean, variance, &options);
         }
 
-        WebnnBatchNormOptions mOptions;
-
-        if (info.Length() == 4) {
-            if (!info[3].IsObject()) {
-                WEBNN_THROW(info.Env(), "The option argument must be Object.");
-                return;
-            }
-            mOptions.axis = 1;
-            mOptions.epsilon = 0.00001;
-
-            Napi::Object obj = info[3].As<Napi::Object>();
-            Napi::Array propertyNames = obj.GetPropertyNames();
-            for (size_t i = 0; i < propertyNames.Length(); ++i) {
-                std::string name = propertyNames.Get(i).As<Napi::String>().Utf8Value();
-                Napi::Value item = static_cast<Napi::Value>(obj.Get(name));
-
-                if (name == "scale") {
-                    Napi::Object scale = item.As<Napi::Object>();
-                    if (scale.InstanceOf(Operand::constructor.Value())) {
-                        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(scale);
-                        mOptions.scale = operand->GetOperand();
-                    }
-                } else if (name == "bias") {
-                    Napi::Object bias = item.As<Napi::Object>();
-                    if (bias.InstanceOf(Operand::constructor.Value())) {
-                        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(bias);
-                        mOptions.bias = operand->GetOperand();
-                    }
-                } else if (name == "axis") {
-                    if (!item.IsNumber()) {
-                        WEBNN_THROW(info.Env(), "The parameter 'axis' should be a number");
-                        return;
-                    }
-
-                    mOptions.axis = item.As<Napi::Number>().Int32Value();
-                } else if (name == "epsilon") {
-                    if (!item.IsNumber()) {
-                        WEBNN_THROW(info.Env(), "The parameter 'epsilon' should be a number");
-                        return;
-                    }
-
-                    mOptions.epsilon = item.As<Napi::Number>().FloatValue();
-                } else {
-                    WEBNN_THROW(info.Env(), "The option isn't supported.");
-                    return;
-                }
-            }
-        }
-
-        OperandBase::SetOperand(
-            webnnModelBuilderBatchNorm(modelBuilder, inputs[0], inputs[1], inputs[2],
-                                       (info.Length() == 4) ? &mOptions : nullptr));
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(batchNorm);
+        return object;
     }
-}  // namespace op
+}}  // namespace node::op

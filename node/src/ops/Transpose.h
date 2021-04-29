@@ -12,25 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ___OPS_TRANSPOSE_H__
-#define ___OPS_TRANSPOSE_H__
+#ifndef NODE_OPS_TRANSPOSE_H_
+#define NODE_OPS_TRANSPOSE_H_
 
-#include <unordered_map>
+#include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-#include "OperandBase.h"
+namespace node { namespace op {
 
-namespace op {
-
-    class Transpose final : public OperandBase {
-      public:
-        Transpose(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder);
-        ~Transpose() = default;
-
-      private:
-        WebnnTransposeOptions mOptions;
-        std::vector<int32_t> mPermutation;
+    struct Transpose {
+        static Napi::Value Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder);
     };
 
-}  // namespace op
+}}  // namespace node::op
 
-#endif  // ___OPS_TRANSPOSE_H__
+#endif  // NODE_OPS_TRANSPOSE_H_

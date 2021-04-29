@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __OPS_RESHAPE_H_
-#define __OPS_RESHAPE_H_
+#ifndef NODE_OPS_RESHAPE_H_
+#define NODE_OPS_RESHAPE_H_
 
-#include <memory>
-#include <string>
+#include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-#include "OperandBase.h"
+namespace node { namespace op {
 
-namespace op {
-
-    class Reshape final : public OperandBase {
-      public:
-        Reshape(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder);
-        ~Reshape() = default;
-
-        std::vector<int32_t>& GetNewShape();
-
-      private:
-        std::vector<int32_t> mNewShape;
+    struct Reshape {
+        static Napi::Value Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder);
     };
 
-}  // namespace op
+}}  // namespace node::op
 
-#endif  // __OPS_RESHAPE_H_
+#endif  // NODE_OPS_RESHAPE_H_

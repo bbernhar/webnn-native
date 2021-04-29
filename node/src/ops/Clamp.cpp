@@ -1,53 +1,58 @@
-#include "Clamp.h"
+// Copyright 2021 The WebNN-native Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include <napi.h>
-#include <iostream>
+#include "ops/Clamp.h"
+
 #include "Operand.h"
 #include "Utils.h"
 
-namespace op {
-    Clamp::Clamp(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder) {
-        const auto& inputs = GetInputs(info);
-        if (inputs.size() != 1) {
-            WEBNN_THROW(info.Env(), "The operation only need one input.");
-            return;
+namespace node { namespace op {
+
+    Napi::Value Clamp::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+        // Operand clamp(Operand x, optional ClampOptions options = {});
+        WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
+                          "The number of arguments is invalid.");
+
+        webnn::Operand input;
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+
+        webnn::Operand clamp;
+        if (info.Length() == 1) {
+            clamp = builder.Clamp(input);
+        } else {
+            // dictionary ClampOptions {
+            //   Operand minValue;
+            //   Operand maxValue;
+            // };
+            webnn::ClampOptions options;
+            WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
+            Napi::Object jsOptions = info[1].As<Napi::Object>();
+            if (HasOptionMember(jsOptions, "minValue")) {
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("minValue"), options.minValue),
+                                  "The minValue parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "maxValue")) {
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("maxValue"), options.maxValue),
+                                  "The maxValue parameter is invalid.");
+            }
+            clamp = builder.Clamp(input, &options);
         }
 
-        WebnnClampOptions options = {};
-        if (info.Length() == 2) {
-            Napi::Value value = static_cast<Napi::Value>(info[1]);
-            if (!value.IsObject()) {
-                WEBNN_THROW(info.Env(), "The option must be Object.");
-                return;
-            }
-            Napi::Object obj = value.As<Napi::Object>();
-            Napi::Array propertyNames = obj.GetPropertyNames();
-            for (size_t i = 0; i < propertyNames.Length(); i++) {
-                std::string name = propertyNames.Get(i).As<Napi::String>().Utf8Value();
-                Napi::Value item = static_cast<Napi::Value>(obj.Get(name));
-                if (!item.IsObject()) {
-                    WEBNN_THROW(info.Env(), "The option argument must be Object.");
-                    return;
-                }
-
-                Napi::Object clampValue = item.As<Napi::Object>();
-
-                if (!clampValue.InstanceOf(Operand::constructor.Value())) {
-                    WEBNN_THROW(info.Env(), "The option argument must be a WebnnOperand.");
-                    return;
-                }
-
-                Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(clampValue);
-                if (name == "minValue") {
-                    options.minValue = operand->GetOperand();
-                } else if (name == "maxValue") {
-                    options.maxValue = operand->GetOperand();
-                } else {
-                    WEBNN_THROW(info.Env(), "The option isn't supported.");
-                    return;
-                }
-            }
-        }
-        OperandBase::SetOperand(webnnModelBuilderClamp(modelBuilder, inputs[0], &options));
+        Napi::Object object = Operand::constructor.New({});
+        Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
+        operand->SetImpl(clamp);
+        return object;
     }
-}  // namespace op
+
+}}  // namespace node::op

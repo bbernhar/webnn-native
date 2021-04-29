@@ -15,19 +15,19 @@
 #include "Index.h"
 
 #include "Compilation.h"
-#include "Ml.h"
+#include "ML.h"
 #include "Model.h"
 #include "ModelBuilder.h"
 #include "NeuralNetworkContext.h"
 #include "Operand.h"
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
-    ML::Initialize(env, exports);
-    NeuralNetworkContext::Initialize(env, exports);
-    ModelBuilder::Initialize(env, exports);
-    Model::Initialize(env, exports);
-    Compilation::Initialize(env, exports);
-    Operand::Initialize(env, exports);
+    node::ML::Initialize(env, exports);
+    node::NeuralNetworkContext::Initialize(env, exports);
+    node::ModelBuilder::Initialize(env, exports);
+    node::Model::Initialize(env, exports);
+    node::Compilation::Initialize(env, exports);
+    node::Operand::Initialize(env, exports);
 
     return exports;
 }

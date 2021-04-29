@@ -12,42 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef __MODEL_BUILDER_H__
-#define __MODEL_BUILDER_H__
+#ifndef NODE_MODEL_BUILDER_H_
+#define NODE_MODEL_BUILDER_H_
 
 #include <napi.h>
-#include <webnn/webnn.h>
+#include <webnn/webnn_cpp.h>
 
-class ModelBuilder : public Napi::ObjectWrap<ModelBuilder> {
-  public:
-    static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
-    static Napi::FunctionReference constructor;
+namespace node {
 
-    explicit ModelBuilder(const Napi::CallbackInfo& info);
-    ~ModelBuilder();
+    class ModelBuilder : public Napi::ObjectWrap<ModelBuilder> {
+      public:
+        static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
+        static Napi::FunctionReference constructor;
 
-    // #accessors
-    Napi::Value Constant(const Napi::CallbackInfo& info);
-    Napi::Value Input(const Napi::CallbackInfo& info);
-    Napi::Value Add(const Napi::CallbackInfo& info);
-    Napi::Value BatchNorm(const Napi::CallbackInfo& info);
-    Napi::Value Mul(const Napi::CallbackInfo& info);
-    Napi::Value MatMul(const Napi::CallbackInfo& info);
-    Napi::Value Conv2d(const Napi::CallbackInfo& info);
-    Napi::Value Concat(const Napi::CallbackInfo& info);
-    Napi::Value Clamp(const Napi::CallbackInfo& info);
-    Napi::Value Gemm(const Napi::CallbackInfo& info);
-    Napi::Value MaxPool2d(const Napi::CallbackInfo& info);
-    Napi::Value AveragePool2d(const Napi::CallbackInfo& info);
-    Napi::Value Relu(const Napi::CallbackInfo& info);
-    Napi::Value LeakyRelu(const Napi::CallbackInfo& info);
-    Napi::Value Reshape(const Napi::CallbackInfo& info);
-    Napi::Value Softmax(const Napi::CallbackInfo& info);
-    Napi::Value Transpose(const Napi::CallbackInfo& info);
-    Napi::Value CreateModel(const Napi::CallbackInfo& info);
+        explicit ModelBuilder(const Napi::CallbackInfo& info);
+        ~ModelBuilder() = default;
 
-  private:
-    WebnnModelBuilder mModelBuilder;
-};
+      private:
+        Napi::Value Constant(const Napi::CallbackInfo& info);
+        Napi::Value Input(const Napi::CallbackInfo& info);
+        Napi::Value Add(const Napi::CallbackInfo& info);
+        Napi::Value BatchNorm(const Napi::CallbackInfo& info);
+        Napi::Value Mul(const Napi::CallbackInfo& info);
+        Napi::Value Matmul(const Napi::CallbackInfo& info);
+        Napi::Value Conv2d(const Napi::CallbackInfo& info);
+        Napi::Value Concat(const Napi::CallbackInfo& info);
+        Napi::Value Clamp(const Napi::CallbackInfo& info);
+        Napi::Value Gemm(const Napi::CallbackInfo& info);
+        Napi::Value MaxPool2d(const Napi::CallbackInfo& info);
+        Napi::Value AveragePool2d(const Napi::CallbackInfo& info);
+        Napi::Value Relu(const Napi::CallbackInfo& info);
+        Napi::Value LeakyRelu(const Napi::CallbackInfo& info);
+        Napi::Value Reshape(const Napi::CallbackInfo& info);
+        Napi::Value Softmax(const Napi::CallbackInfo& info);
+        Napi::Value Transpose(const Napi::CallbackInfo& info);
+        Napi::Value CreateModel(const Napi::CallbackInfo& info);
 
-#endif  // __MODEL_BUILDER_H__
+        webnn::ModelBuilder mImpl;
+    };
+
+}  // namespace node
+
+#endif  // NODE_MODEL_BUILDER_H_

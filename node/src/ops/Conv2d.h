@@ -12,27 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef ___OPS_CONV2D_H__
-#define ___OPS_CONV2D_H__
+#ifndef NODE_OPS_CONV2D_H_
+#define NODE_OPS_CONV2D_H_
 
-#include <unordered_map>
+#include <napi.h>
+#include <webnn/webnn_cpp.h>
 
-#include "ops/OperandBase.h"
+namespace node { namespace op {
 
-namespace op {
-
-    class Conv2d final : public OperandBase {
-      public:
-        Conv2d(const Napi::CallbackInfo& info, WebnnModelBuilder modelBuilder);
-        ~Conv2d() = default;
-
-      private:
-        WebnnConv2dOptions mOptions;
-        std::vector<int32_t> mPadding;
-        std::vector<int32_t> mStride;
-        std::vector<int32_t> mDilations;
+    struct Conv2d {
+        static Napi::Value Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder);
     };
 
-}  // namespace op
+}}  // namespace node::op
 
-#endif  // ___OPS_CONV2D_H__
+#endif  // NODE_OPS_CONV2D_H_
