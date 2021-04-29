@@ -32,59 +32,59 @@ namespace webnn_native {
     }
 
     MaybeError GraphBase::AddConstant(const op::Constant* constant) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddConstant");
     }
 
     MaybeError GraphBase::AddInput(const op::Input* input) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddInput");
     }
 
     MaybeError GraphBase::AddOutput(const std::string& name, const OperandBase* output) {
-        UNREACHABLE();
-    }
-
-    MaybeError GraphBase::AddBinary(const op::Binary* binary) {
-        UNREACHABLE();
-    }
-
-    MaybeError GraphBase::AddConv2d(const op::Conv2d* conv2d) {
-        UNREACHABLE();
-    }
-
-    MaybeError GraphBase::AddPool2d(const op::Pool2d* pool2d) {
-        UNREACHABLE();
-    }
-
-    MaybeError GraphBase::AddReshape(const op::Reshape* relu) {
-        UNREACHABLE();
-    }
-
-    MaybeError GraphBase::AddTranspose(const op::Transpose* transpose) {
-        UNREACHABLE();
-    }
-
-    MaybeError GraphBase::AddUnary(const op::Unary* unary) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddOutput");
     }
 
     MaybeError GraphBase::AddBatchNorm(const op::BatchNorm* batchNorm) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddBatchNorm");
     }
 
-    MaybeError GraphBase::AddLeakyRelu(const op::LeakyRelu* unary) {
-        UNREACHABLE();
+    MaybeError GraphBase::AddBinary(const op::Binary* binary) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddBinary");
+    }
+
+    MaybeError GraphBase::AddConv2d(const op::Conv2d* conv2d) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddConv2d");
+    }
+
+    MaybeError GraphBase::AddPool2d(const op::Pool2d* pool2d) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddPool2d");
+    }
+
+    MaybeError GraphBase::AddReshape(const op::Reshape* relu) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddReshape");
+    }
+
+    MaybeError GraphBase::AddTranspose(const op::Transpose* transpose) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddTranspose");
+    }
+
+    MaybeError GraphBase::AddUnary(const op::Unary* unary) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddUnary");
+    }
+
+    MaybeError GraphBase::AddLeakyRelu(const op::LeakyRelu* leakyRelu) {
+        return DAWN_UNIMPLEMENTED_ERROR("AddLeakyRelu");
     }
 
     MaybeError GraphBase::AddConcat(const op::Concat* concat) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddConcat");
     }
 
     MaybeError GraphBase::AddGemm(const op::Gemm* gemm) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddGemm");
     }
 
     MaybeError GraphBase::AddClamp(const op::Clamp* clamp) {
-        UNREACHABLE();
+        return DAWN_UNIMPLEMENTED_ERROR("AddClamp");
     }
 
     MaybeError GraphBase::Finish() {

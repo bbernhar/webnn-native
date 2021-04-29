@@ -71,24 +71,24 @@ bool Expected(float output, float expected) {
 namespace utils {
 
     ml::Operand BuildInput(const ml::GraphBuilder& builder,
-                              std::string name,
-                              const std::vector<int32_t>& dimensions,
-                              ml::OperandType type) {
+                           std::string name,
+                           const std::vector<int32_t>& dimensions,
+                           ml::OperandType type) {
         ml::OperandDescriptor desc = {type, dimensions.data(), (uint32_t)dimensions.size()};
         return builder.Input(name.c_str(), &desc);
     }
 
     ml::Operand BuildConstant(const ml::GraphBuilder& builder,
-                                 const std::vector<int32_t>& dimensions,
-                                 const void* value,
-                                 size_t size,
-                                 ml::OperandType type) {
+                              const std::vector<int32_t>& dimensions,
+                              const void* value,
+                              size_t size,
+                              ml::OperandType type) {
         ml::OperandDescriptor desc = {type, dimensions.data(), (uint32_t)dimensions.size()};
         return builder.Constant(&desc, value, size);
     }
 
     ml::Graph AwaitBuild(const ml::GraphBuilder& builder,
-                             const std::vector<NamedOperand>& outputs) {
+                         const std::vector<NamedOperand>& outputs) {
         typedef struct {
             Async async;
             ml::Graph graph;
@@ -99,9 +99,9 @@ namespace utils {
         for (auto& output : outputs) {
             namedOperands.Set(output.name.c_str(), output.operand);
         }
-        builder.Build(namedOperands,
-            [](MLBuildGraphStatus status, MLGraph impl, char const* message,
-               void* userData) {
+        builder.Build(
+            namedOperands,
+            [](MLBuildGraphStatus status, MLGraph impl, char const* message, void* userData) {
                 BuildData* buildDataPtr = reinterpret_cast<BuildData*>(userData);
                 DAWN_ASSERT(buildDataPtr);
                 if (status != MLBuildGraphStatus_Success) {
@@ -118,8 +118,8 @@ namespace utils {
     }
 
     ml::NamedResults AwaitCompute(const ml::Graph& graph,
-                                     const std::vector<NamedInput>& inputs,
-                                     const std::vector<NamedOutput>& outputs) {
+                                  const std::vector<NamedInput>& inputs,
+                                  const std::vector<NamedOutput>& outputs) {
         if (graph.GetHandle() == nullptr) {
             return ml::NamedResults();
         }

@@ -25,7 +25,7 @@ void ShowUsage() {
               << "Print this message." << std::endl;
     std::cout << "    -i \"<path>\"             "
               << "Required. Path to an image." << std::endl;
-std::cout << "    -m \"<path>\"             "
+    std::cout << "    -m \"<path>\"             "
               << "Required. Path to the .npy files with trained weights/biases." << std::endl;
     std::cout
         << "    -l \"<layout>\"           "

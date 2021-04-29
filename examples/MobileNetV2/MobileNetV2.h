@@ -27,42 +27,42 @@ class MobileNetV2 {
     bool LoadNHWC(const std::string& weightsPath, bool softmax = true);
     ml::Result Compute(const void* inputData, size_t inputLength);
     const ml::Operand BuildConstantFromNpy(const ml::GraphBuilder& builder,
-                                              const std::string& path);
+                                           const std::string& path);
     const ml::Operand BuildConv(const ml::GraphBuilder& builder,
-                                   const ml::Operand& input,
-                                   int32_t convIndex,
-                                   bool fused,
-                                   utils::Conv2dOptions* options = nullptr,
-                                   const std::string& biasName = "");
+                                const ml::Operand& input,
+                                int32_t convIndex,
+                                bool fused,
+                                utils::Conv2dOptions* options = nullptr,
+                                const std::string& biasName = "");
     const ml::Operand BuildConvBatchNorm(const ml::GraphBuilder& builder,
-                                            const ml::Operand& input,
-                                            int32_t nameIndex,
-                                            utils::Conv2dOptions* options = nullptr,
-                                            int32_t subNameIndex = -1);
+                                         const ml::Operand& input,
+                                         int32_t nameIndex,
+                                         utils::Conv2dOptions* options = nullptr,
+                                         int32_t subNameIndex = -1);
     const ml::Operand BuildFire(const ml::GraphBuilder& builder,
-                                   const ml::Operand& input,
-                                   const std::vector<int32_t>& convIndexes,
-                                   int32_t groups,
-                                   bool strides = false,
-                                   bool shouldAdd = true);
+                                const ml::Operand& input,
+                                const std::vector<int32_t>& convIndexes,
+                                int32_t groups,
+                                bool strides = false,
+                                bool shouldAdd = true);
     const ml::Operand BuildBatchNormFire(const ml::GraphBuilder& builder,
-                                            const ml::Operand& input,
-                                            int32_t subNameIndex,
-                                            utils::Conv2dOptions* options);
+                                         const ml::Operand& input,
+                                         int32_t subNameIndex,
+                                         utils::Conv2dOptions* options);
     const ml::Operand BuildLinearBottleneck(const ml::GraphBuilder& builder,
-                                               const ml::Operand& input,
-                                               const std::vector<int32_t>& convIndexes,
-                                               int32_t biasIndex,
-                                               utils::Conv2dOptions* dwiseOptions,
-                                               bool shouldAdd = true);
+                                            const ml::Operand& input,
+                                            const std::vector<int32_t>& convIndexes,
+                                            int32_t biasIndex,
+                                            utils::Conv2dOptions* dwiseOptions,
+                                            bool shouldAdd = true);
     const ml::Operand BuildFireMore(const ml::GraphBuilder& builder,
-                                       const ml::Operand& input,
-                                       const std::vector<int32_t>& convIndexes,
-                                       const std::vector<int32_t> groups,
-                                       bool strides = true);
+                                    const ml::Operand& input,
+                                    const std::vector<int32_t>& convIndexes,
+                                    const std::vector<int32_t> groups,
+                                    bool strides = true);
     const ml::Operand BuildGemm(const ml::GraphBuilder& builder,
-                                   const ml::Operand& input,
-                                   int32_t gemmIndex);
+                                const ml::Operand& input,
+                                int32_t gemmIndex);
 
   private:
     ml::Context mContext;

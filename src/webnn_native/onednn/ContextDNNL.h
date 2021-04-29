@@ -12,18 +12,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "webnn_native/onednn/ModelBuilderDNNL.h"
+#ifndef WEBNN_NATIVE_ONEDNN_CONTEXT_DNNL_H_
+#define WEBNN_NATIVE_ONEDNN_CONTEXT_DNNL_H_
 
-#include "common/Log.h"
-#include "webnn_native/onednn/ModelDNNL.h"
+#include "webnn_native/Context.h"
+
+#include <dnnl.h>
 
 namespace webnn_native { namespace onednn {
 
-    ModelBuilder::ModelBuilder(NeuralNetworkContextBase* context) : GraphBuilderBase(context) {
-    }
+    class Context : public ContextBase {
+      public:
+        Context();
+        ~Context() override;
 
-    GraphBase* ModelBuilder::CreateModelImpl() {
-        return new Model(this);
-    }
+        dnnl_status_t CreateEngine(dnnl_engine_kind_t engineKind = dnnl_cpu);
+
+        dnnl_engine_t GetEngine() {
+            return mEngine;
+        }
+
+      private:
+        GraphBase* CreateGraphImpl() override;
+
+        dnnl_engine_t mEngine;
+    };
 
 }}  // namespace webnn_native::onednn
+
+#endif  // WEBNN_NATIVE_ONEDNN_CONTEXT_DNNL_H_

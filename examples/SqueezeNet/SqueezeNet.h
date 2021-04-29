@@ -26,16 +26,16 @@ class SqueezeNet {
     bool LoadNHWC(const std::string& weightsPath, bool softmax = true);
     ml::Result Compute(const void* inputData, size_t inputLength);
     const ml::Operand BuildConstantFromNpy(const ml::GraphBuilder& builder,
-                                              const std::string& path);
+                                           const std::string& path);
     const ml::Operand BuildConv(const ml::GraphBuilder& builder,
-                                   const ml::Operand& input,
-                                   const std::string& name,
-                                   utils::Conv2dOptions* options = nullptr);
+                                const ml::Operand& input,
+                                const std::string& name,
+                                utils::Conv2dOptions* options = nullptr);
     const ml::Operand BuildFire(const ml::GraphBuilder& builder,
-                                   const ml::Operand& input,
-                                   const std::string& convName,
-                                   const std::string& conv1x1Name,
-                                   const std::string& conv3x3Name);
+                                const ml::Operand& input,
+                                const std::string& convName,
+                                const std::string& conv1x1Name,
+                                const std::string& conv3x3Name);
 
   private:
     ml::Context mContext;

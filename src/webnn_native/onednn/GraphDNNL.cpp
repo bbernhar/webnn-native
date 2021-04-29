@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "webnn_native/onednn/ModelDNNL.h"
+#include "webnn_native/onednn/GraphDNNL.h"
 
 #include <numeric>
 
@@ -22,8 +22,8 @@
 #include "webnn_native/NamedResults.h"
 #include "webnn_native/Operand.h"
 #include "webnn_native/Result.h"
-#include "webnn_native/onednn/CompilationDNNL.h"
-#include "webnn_native/onednn/NeuralNetworkContextDNNL.h"
+#include "webnn_native/NamedInputs.h"
+#include "webnn_native/NamedOutputs.h"
 
 #define FAILED(status) (((dnnl_status_t)(status)) != dnnl_success)
 
@@ -80,7 +80,7 @@ const char* dnnl_status2str(dnnl_status_t v) {
     do {                                                                                   \
         std::string message = std::string(what) + std::string(" returns oneDNN error: ") + \
                               std::string(dnnl_status2str(s_));                            \
-        callback(WebnnComputeStatus_Error, nullptr, message.c_str(), userdata);            \
+        callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);            \
         return;                                                                            \
     } while (0)
 
@@ -289,10 +289,10 @@ namespace webnn_native { namespace onednn {
 
     }  // anonymous namespace
 
-    Model::Model(ModelBuilder* modelBuilder) : GraphBase(modelBuilder) {
+    Graph::Graph(Context* context) : GraphBase(context) {
     }
 
-    Model::~Model() {
+    Graph::~Graph() {
         for (auto memory : mMemories) {
             dnnl_memory_destroy(memory);
         }
@@ -301,7 +301,7 @@ namespace webnn_native { namespace onednn {
         }
     }
 
-    MaybeError Model::AddConstant(const op::Constant* constant) {
+    MaybeError Graph::AddConstant(const op::Constant* constant) {
         const OperandDescriptor* desc = constant->GetOperandDescriptor();
         dnnl_memory_t memory;
         DAWN_TRY(CreateDnnlMemory(GetEngine(), desc, &memory, constant->GetValue(),
@@ -312,7 +312,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddInput(const op::Input* input) {
+    MaybeError Graph::AddInput(const op::Input* input) {
         const OperandDescriptor* desc = input->GetOperandDescriptor();
         dnnl_memory_t memory;
         DAWN_TRY(CreateDnnlMemory(GetEngine(), desc, &memory));
@@ -322,7 +322,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddOutput(const std::string& name, const OperandBase* output) {
+    MaybeError Graph::AddOutput(const std::string& name, const OperandBase* output) {
         DAWN_ASSERT(mOperandMemoryMap.find(output) != mOperandMemoryMap.end());
         dnnl_memory_t plainOutputMemory;
         DAWN_TRY(ReorderToPlainFormat(mOperandMemoryMap.at(output), &plainOutputMemory));
@@ -330,7 +330,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddBinary(const op::Binary* binary) {
+    MaybeError Graph::AddBinary(const op::Binary* binary) {
         DAWN_ASSERT(binary->Inputs().size() == 2);
         DAWN_ASSERT(mOperandMemoryMap.find(binary->Inputs()[0].Get()) != mOperandMemoryMap.end());
         dnnl_memory_t aMemory = mOperandMemoryMap.at(binary->Inputs()[0].Get());
@@ -479,7 +479,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddConv2d(const op::Conv2d* conv2d) {
+    MaybeError Graph::AddConv2d(const op::Conv2d* conv2d) {
         DAWN_ASSERT(conv2d->Inputs().size() == 2);
         const OperandBase* inputOperand = conv2d->Inputs()[0].Get();
         DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
@@ -567,7 +567,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddPool2d(const op::Pool2d* pool2d) {
+    MaybeError Graph::AddPool2d(const op::Pool2d* pool2d) {
         DAWN_ASSERT(pool2d->Inputs().size() == 1);
         const OperandBase* inputOperand = pool2d->Inputs()[0].Get();
         DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
@@ -650,7 +650,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddReshape(const op::Reshape* reshape) {
+    MaybeError Graph::AddReshape(const op::Reshape* reshape) {
         DAWN_ASSERT(reshape->Inputs().size() == 1);
         const OperandBase* inputOperand = reshape->Inputs()[0].Get();
         DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
@@ -697,7 +697,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddTranspose(const op::Transpose* transpose) {
+    MaybeError Graph::AddTranspose(const op::Transpose* transpose) {
         DAWN_ASSERT(transpose->Inputs().size() == 1);
         const OperandBase* inputOperand = transpose->Inputs()[0].Get();
         DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
@@ -733,7 +733,7 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::AddUnary(const op::Unary* unary) {
+    MaybeError Graph::AddUnary(const op::Unary* unary) {
         DAWN_ASSERT(unary->Inputs().size() == 1);
         const OperandBase* inputOperand = unary->Inputs()[0].Get();
         DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
@@ -771,25 +771,20 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    MaybeError Model::Finish() {
+    MaybeError Graph::Finish() {
         return {};
     }
 
-    void Model::CompileImpl(WebnnCompileCallback callback,
-                            void* userdata,
-                            CompilationOptions const* options) {
-        Ref<Compilation> compilation = AcquireRef(new Compilation(this));
-        if (FAILED(dnnl_stream_create(&mStream, GetEngine(), dnnl_stream_default_flags))) {
-            callback(WebnnCompileStatus_Error, nullptr, "dnnl_stream_create failed", userdata);
-            return;
-        } else {
-            callback(WebnnCompileStatus_Success,
-                     reinterpret_cast<WebnnCompilation>(compilation.Detach()), nullptr, userdata);
-        }
+    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+        MLBuildGraphStatus status =
+            FAILED(dnnl_stream_create(&mStream, GetEngine(), dnnl_stream_default_flags))
+                ? MLBuildGraphStatus_Error
+                : MLBuildGraphStatus_Success;
+        delgate(status, this);
     }
 
-    void Model::ComputeImpl(NamedInputsBase* inputs,
-                            WebnnComputeCallback callback,
+    void Graph::ComputeImpl(NamedInputsBase* inputs,
+                            MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
         for (auto& input : inputs->GetRecords()) {
@@ -839,16 +834,16 @@ namespace webnn_native { namespace onednn {
                 }
             }
         }
-        callback(WebnnComputeStatus_Success, reinterpret_cast<WebnnNamedResults>(results.Detach()),
+        callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
                  nullptr, userdata);
         return;
     }
 
-    dnnl_engine_t Model::GetEngine() {
-        return reinterpret_cast<NeuralNetworkContext*>(GetContext())->GetEngine();
+    dnnl_engine_t Graph::GetEngine() {
+        return reinterpret_cast<Context*>(GetContext())->GetEngine();
     }
 
-    dnnl_status_t Model::GetMemoryDesc(dnnl_memory_t memory, const dnnl_memory_desc_t** desc) {
+    dnnl_status_t Graph::GetMemoryDesc(dnnl_memory_t memory, const dnnl_memory_desc_t** desc) {
         if (mMemoryReinterprets.find(memory) != mMemoryReinterprets.end()) {
             *desc = &mMemoryReinterprets.at(memory);
         } else {
@@ -857,7 +852,7 @@ namespace webnn_native { namespace onednn {
         return dnnl_success;
     }
 
-    dnnl_status_t Model::ReorderIfNeeded(const dnnl_memory_desc_t* srcDesc,
+    dnnl_status_t Graph::ReorderIfNeeded(const dnnl_memory_desc_t* srcDesc,
                                          dnnl_memory_t srcMem,
                                          const dnnl_memory_desc_t* dstDesc,
                                          dnnl_memory_t* userDstMem) {
@@ -892,7 +887,7 @@ namespace webnn_native { namespace onednn {
         return dnnl_success;
     }
 
-    dnnl_status_t Model::ReorderToPlainFormat(dnnl_memory_t srcMem, dnnl_memory_t* dstMem) {
+    dnnl_status_t Graph::ReorderToPlainFormat(dnnl_memory_t srcMem, dnnl_memory_t* dstMem) {
         const dnnl_memory_desc_t* srcDesc;
         DNNL_TRY(GetMemoryDesc(srcMem, &srcDesc));
         std::vector<int32_t> dimensions(srcDesc->dims, srcDesc->dims + srcDesc->ndims);

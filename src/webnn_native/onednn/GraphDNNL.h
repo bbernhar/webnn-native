@@ -22,7 +22,7 @@
 
 #include "webnn_native/Graph.h"
 #include "webnn_native/Operand.h"
-#include "webnn_native/onednn/ModelBuilderDNNL.h"
+#include "webnn_native/onednn/ContextDNNL.h"
 #include "webnn_native/ops/Binary.h"
 #include "webnn_native/ops/Constant.h"
 #include "webnn_native/ops/Conv2d.h"
@@ -34,10 +34,10 @@
 
 namespace webnn_native { namespace onednn {
 
-    class Model : public GraphBase {
+    class Graph : public GraphBase {
       public:
-        explicit Model(ModelBuilder* model_builder);
-        ~Model() override;
+        explicit Graph(Context* context);
+        ~Graph() override;
 
         virtual MaybeError AddConstant(const op::Constant* constant) override;
         virtual MaybeError AddInput(const op::Input* input) override;
@@ -50,17 +50,12 @@ namespace webnn_native { namespace onednn {
         virtual MaybeError AddUnary(const op::Unary* unary) override;
         virtual MaybeError Finish() override;
 
-        void ComputeImpl(NamedInputsBase* inputs,
-                         WebnnComputeCallback callback,
-                         void* userdata,
-                         NamedOutputsBase* outputs = nullptr);
-
-        friend class Compilation;
-
       private:
-        void CompileImpl(WebnnCompileCallback callback,
+        void CompileImpl(BuildGraphCallbackDelgate delgate) override;
+        void ComputeImpl(NamedInputsBase* inputs,
+                         MLComputeGraphCallback callback,
                          void* userdata,
-                         CompilationOptions const* options) override;
+                         NamedOutputsBase* outputs) override;
 
         dnnl_engine_t GetEngine();
         dnnl_status_t GetMemoryDesc(dnnl_memory_t memory, const dnnl_memory_desc_t** desc);

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "webnn_native/onednn/NeuralNetworkContextDNNL.h"
+#include "webnn_native/onednn/ContextDNNL.h"
 
 #include "common/Log.h"
 #include "common/RefCounted.h"
-#include "webnn_native/onednn/ModelBuilderDNNL.h"
+#include "webnn_native/onednn/GraphDNNL.h"
 
 namespace webnn_native { namespace onednn {
 
-    NeuralNetworkContextBase* Create() {
-        Ref<NeuralNetworkContextBase> context = AcquireRef(new NeuralNetworkContext());
+    ContextBase* Create() {
+        Ref<ContextBase> context = AcquireRef(new Context());
         dnnl_status_t status =
-            reinterpret_cast<NeuralNetworkContext*>(context.Get())->CreateEngine();
+            reinterpret_cast<Context*>(context.Get())->CreateEngine();
         if (status != dnnl_success) {
             dawn::ErrorLog() << "Failed to create oneDNN engine.";
             return nullptr;
@@ -31,21 +31,21 @@ namespace webnn_native { namespace onednn {
         return context.Detach();
     }
 
-    NeuralNetworkContext::NeuralNetworkContext() : mEngine(nullptr) {
+    Context::Context() : mEngine(nullptr) {
     }
 
-    NeuralNetworkContext::~NeuralNetworkContext() {
+    Context::~Context() {
         if (mEngine != nullptr) {
             dnnl_engine_destroy(mEngine);
         }
     }
 
-    dnnl_status_t NeuralNetworkContext::CreateEngine(dnnl_engine_kind_t engineKind) {
+    dnnl_status_t Context::CreateEngine(dnnl_engine_kind_t engineKind) {
         return dnnl_engine_create(&mEngine, engineKind, 0);
     }
 
-    GraphBuilderBase* NeuralNetworkContext::CreateModelBuilderImpl() {
-        return new ModelBuilder(this);
+    GraphBase* Context::CreateGraphImpl() {
+        return new Graph(this);
     }
 
 }}  // namespace webnn_native::onednn

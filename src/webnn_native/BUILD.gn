@@ -228,14 +228,10 @@ source_set("webnn_native_sources") {
 
   if (webnn_enable_onednn) {
     sources += [
-      "onednn/CompilationDNNL.cpp",
-      "onednn/CompilationDNNL.h",
-      "onednn/ModelBuilderDNNL.cpp",
-      "onednn/ModelBuilderDNNL.h",
-      "onednn/ModelDNNL.cpp",
-      "onednn/ModelDNNL.h",
-      "onednn/NeuralNetworkContextDNNL.cpp",
-      "onednn/NeuralNetworkContextDNNL.h",
+      "onednn/ContextDNNL.cpp",
+      "onednn/ContextDNNL.h",
+      "onednn/GraphDNNL.cpp",
+      "onednn/GraphDNNL.h",
     ]
 
     include_dirs = [ "${dnnl_path}/include" ]

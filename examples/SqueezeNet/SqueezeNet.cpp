@@ -31,16 +31,16 @@ SqueezeNet::SqueezeNet(bool nchw) {
 }
 
 const ml::Operand SqueezeNet::BuildConstantFromNpy(const ml::GraphBuilder& builder,
-                                                      const std::string& path) {
+                                                   const std::string& path) {
     const cnpy::NpyArray data = cnpy::npy_load(path);
     mConstants.push_back(data.data_holder);
     return utils::BuildConstant(builder, data.shape, data.data<float>(), data.num_bytes());
 }
 
 const ml::Operand SqueezeNet::BuildConv(const ml::GraphBuilder& builder,
-                                           const ml::Operand& input,
-                                           const std::string& name,
-                                           utils::Conv2dOptions* options) {
+                                        const ml::Operand& input,
+                                        const std::string& name,
+                                        utils::Conv2dOptions* options) {
     std::string suffix = mNchw ? "_weight.npy" : "_kernel.npy";
     const std::string weightsPath = mDataPath + name + suffix;
     const ml::Operand convWeights = BuildConstantFromNpy(builder, weightsPath);
@@ -56,10 +56,10 @@ const ml::Operand SqueezeNet::BuildConv(const ml::GraphBuilder& builder,
 }
 
 const ml::Operand SqueezeNet::BuildFire(const ml::GraphBuilder& builder,
-                                           const ml::Operand& input,
-                                           const std::string& convName,
-                                           const std::string& conv1x1Name,
-                                           const std::string& conv3x3Name) {
+                                        const ml::Operand& input,
+                                        const std::string& convName,
+                                        const std::string& conv1x1Name,
+                                        const std::string& conv3x3Name) {
     utils::Conv2dOptions convOptions;
     if (!mNchw) {
         convOptions.inputLayout = ml::InputOperandLayout::Nhwc;
@@ -78,7 +78,7 @@ std::vector<int32_t> ComputeExplicitPadding(int32_t inputSize,
                                             int32_t stride,
                                             int32_t filterSize,
                                             int32_t dilation = 1) {
-    int32_t outSize = (inputSize + stride-1) / stride;
+    int32_t outSize = (inputSize + stride - 1) / stride;
     int32_t effectiveFilterSize = (filterSize - 1) * dilation + 1;
     int32_t neededInput = (outSize - 1) * stride + effectiveFilterSize;
     int32_t totalPadding = std::max(0, neededInput - inputSize);

@@ -30,18 +30,18 @@ MobileNetV2::MobileNetV2(bool nchw) : mNCHW(nchw) {
 }
 
 const ml::Operand MobileNetV2::BuildConstantFromNpy(const ml::GraphBuilder& builder,
-                                                       const std::string& path) {
+                                                    const std::string& path) {
     const cnpy::NpyArray data = cnpy::npy_load(path);
     mConstants.push_back(data.data_holder);
     return utils::BuildConstant(builder, data.shape, data.data<float>(), data.num_bytes());
 }
 
 const ml::Operand MobileNetV2::BuildConv(const ml::GraphBuilder& builder,
-                                            const ml::Operand& input,
-                                            int32_t convIndex,
-                                            bool fused,
-                                            utils::Conv2dOptions* options,
-                                            const std::string& biasName) {
+                                         const ml::Operand& input,
+                                         int32_t convIndex,
+                                         bool fused,
+                                         utils::Conv2dOptions* options,
+                                         const std::string& biasName) {
     std::string prefix = mNCHW ? mDataPath + "conv_" : mDataPath + "Const_";
     std::string suffix = mNCHW ? "_weight.npy" : ".npy";
     const std::string weightsPath = prefix + std::to_string(convIndex) + suffix;
@@ -91,10 +91,10 @@ const ml::Operand MobileNetV2::BuildConv(const ml::GraphBuilder& builder,
 }
 
 const ml::Operand MobileNetV2::BuildConvBatchNorm(const ml::GraphBuilder& builder,
-                                                     const ml::Operand& input,
-                                                     int32_t nameIndex,
-                                                     utils::Conv2dOptions* options,
-                                                     int32_t subNameIndex) {
+                                                  const ml::Operand& input,
+                                                  int32_t nameIndex,
+                                                  utils::Conv2dOptions* options,
+                                                  int32_t subNameIndex) {
     const std::string subName =
         subNameIndex != -1 ? "_linearbottleneck" + std::to_string(subNameIndex) : "";
     std::string prefix = mDataPath + "mobilenetv20_features" + subName;
@@ -118,8 +118,8 @@ const ml::Operand MobileNetV2::BuildConvBatchNorm(const ml::GraphBuilder& builde
 }
 
 const ml::Operand MobileNetV2::BuildGemm(const ml::GraphBuilder& builder,
-                                            const ml::Operand& input,
-                                            int32_t gemmIndex) {
+                                         const ml::Operand& input,
+                                         int32_t gemmIndex) {
     std::string suffix = mNCHW ? "_weight.npy" : "_kernel.npy";
     const std::string weightsPath = mDataPath + "gemm_" + std::to_string(gemmIndex) + suffix;
     const ml::Operand gemmWeights = BuildConstantFromNpy(builder, weightsPath);
@@ -134,11 +134,11 @@ const ml::Operand MobileNetV2::BuildGemm(const ml::GraphBuilder& builder,
 }
 
 const ml::Operand MobileNetV2::BuildFire(const ml::GraphBuilder& builder,
-                                            const ml::Operand& input,
-                                            const std::vector<int32_t>& convIndexes,
-                                            int32_t groups,
-                                            bool strides,
-                                            bool shouldAdd) {
+                                         const ml::Operand& input,
+                                         const std::vector<int32_t>& convIndexes,
+                                         int32_t groups,
+                                         bool strides,
+                                         bool shouldAdd) {
     utils::Conv2dOptions convOptions;
     if (!mNCHW) {
         convOptions.inputLayout = ml::InputOperandLayout::Nhwc;
@@ -156,9 +156,9 @@ const ml::Operand MobileNetV2::BuildFire(const ml::GraphBuilder& builder,
 }
 
 const ml::Operand MobileNetV2::BuildBatchNormFire(const ml::GraphBuilder& builder,
-                                                     const ml::Operand& input,
-                                                     int32_t subNameIndex,
-                                                     utils::Conv2dOptions* options) {
+                                                  const ml::Operand& input,
+                                                  int32_t subNameIndex,
+                                                  utils::Conv2dOptions* options) {
     const ml::Operand batchNorm0 = BuildConvBatchNorm(builder, input, 0, nullptr, subNameIndex);
     const ml::Operand batchNorm1 =
         BuildConvBatchNorm(builder, builder.Relu(batchNorm0), 1, options, subNameIndex);
@@ -166,11 +166,11 @@ const ml::Operand MobileNetV2::BuildBatchNormFire(const ml::GraphBuilder& builde
 }
 
 const ml::Operand MobileNetV2::BuildLinearBottleneck(const ml::GraphBuilder& builder,
-                                                        const ml::Operand& input,
-                                                        const std::vector<int32_t>& convIndexes,
-                                                        int32_t biasIndex,
-                                                        utils::Conv2dOptions* dwiseOptions,
-                                                        bool shouldAdd) {
+                                                     const ml::Operand& input,
+                                                     const std::vector<int32_t>& convIndexes,
+                                                     int32_t biasIndex,
+                                                     utils::Conv2dOptions* dwiseOptions,
+                                                     bool shouldAdd) {
     utils::Conv2dOptions convOptions;
     convOptions.autoPad = ml::AutoPad::SameLower;
     convOptions.inputLayout = ml::InputOperandLayout::Nhwc;
@@ -179,23 +179,23 @@ const ml::Operand MobileNetV2::BuildLinearBottleneck(const ml::GraphBuilder& bui
     const std::string biasPrefix = "expanded_conv_" + std::to_string(biasIndex);
 
     const ml::Operand conv1x1 = BuildConv(builder, input, convIndexes[0], true, &convOptions,
-                                             biasPrefix + "_expand_Conv2D");
+                                          biasPrefix + "_expand_Conv2D");
     dwiseOptions->autoPad = ml::AutoPad::SameLower;
     dwiseOptions->inputLayout = ml::InputOperandLayout::Nhwc;
     // dwiseOptions->filterLayout = ml::FilterOperandLayout::Ihwo;
     const ml::Operand conv3x3 = BuildConv(builder, conv1x1, convIndexes[1], true, dwiseOptions,
-                                             biasPrefix + "_depthwise_depthwise");
+                                          biasPrefix + "_depthwise_depthwise");
 
     const ml::Operand conv1x1NotClamp = BuildConv(builder, conv3x3, convIndexes[2], false,
-                                                     &convOptions, biasPrefix + "_project_Conv2D");
+                                                  &convOptions, biasPrefix + "_project_Conv2D");
     return shouldAdd ? builder.Add(input, conv1x1NotClamp) : conv1x1NotClamp;
 }
 
 const ml::Operand MobileNetV2::BuildFireMore(const ml::GraphBuilder& builder,
-                                                const ml::Operand& input,
-                                                const std::vector<int32_t>& convIndexes,
-                                                const std::vector<int32_t> groups,
-                                                bool strides) {
+                                             const ml::Operand& input,
+                                             const std::vector<int32_t>& convIndexes,
+                                             const std::vector<int32_t> groups,
+                                             bool strides) {
     const std::vector<int32_t> convList1(convIndexes.begin(), convIndexes.begin() + 3);
     const ml::Operand fire1 = BuildFire(builder, input, convList1, groups[0], strides, false);
     const std::vector<int32_t> convList2(convIndexes.begin() + 3, convIndexes.begin() + 6);
@@ -345,7 +345,7 @@ bool MobileNetV2::LoadNHWC(const std::string& weightsPath, bool softmax) {
     dwiseConv12Options.groups = 576;
     dwiseConv12Options.strides = {2, 2};
     const ml::Operand bottleneck12 = BuildLinearBottleneck(builder, bottleneck11, {114, 65, 242},
-                                                              13, &dwiseConv12Options, false);
+                                                           13, &dwiseConv12Options, false);
 
     utils::Conv2dOptions dwiseConv13Options;
     dwiseConv13Options.groups = 960;
@@ -358,7 +358,7 @@ bool MobileNetV2::LoadNHWC(const std::string& weightsPath, bool softmax) {
 
     utils::Conv2dOptions dwiseConv15Options = dwiseConv13Options;
     const ml::Operand bottleneck15 = BuildLinearBottleneck(builder, bottleneck14, {60, 248, 100},
-                                                              16, &dwiseConv15Options, false);
+                                                           16, &dwiseConv15Options, false);
 
     utils::Conv2dOptions conv3Options;
     conv3Options.autoPad = ml::AutoPad::SameLower;
