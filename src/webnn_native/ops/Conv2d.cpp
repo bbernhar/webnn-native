@@ -56,8 +56,8 @@ namespace webnn_native { namespace op {
         mOptions.autoPad = options == nullptr ? ml::AutoPad::Explicit : options->autoPad;
     }
 
-    MaybeError Conv2d::AddToGraph(GraphBase* model) const {
-        return model->AddConv2d(this);
+    MaybeError Conv2d::AddToGraph(GraphBase* graph) const {
+        return graph->AddConv2d(this);
     }
 
     Conv2dOptions const* Conv2d::GetOptions() const {

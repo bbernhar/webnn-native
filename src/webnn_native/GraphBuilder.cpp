@@ -119,7 +119,6 @@ namespace webnn_native {
         DAWN_VALIDATE_AND_INFER_TYPES(new op::Transpose(this, input, options));
     }
 
-    
     OperandBase* GraphBuilderBase::LeakyRelu(OperandBase* input, LeakyReluOptions const* options) {
         DAWN_VALIDATE_AND_INFER_TYPES(new op::LeakyRelu(this, input, options));
     }

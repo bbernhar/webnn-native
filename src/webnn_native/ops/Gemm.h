@@ -25,8 +25,8 @@ namespace webnn_native { namespace op {
         Gemm(GraphBuilderBase* builder, OperandBase* a, OperandBase* b, GemmOptions const* options);
         ~Gemm() override = default;
 
-        MaybeError AddToGraph(GraphBase* model) const override {
-            return model->AddGemm(this);
+        MaybeError AddToGraph(GraphBase* graph) const override {
+            return graph->AddGemm(this);
         }
         MaybeError ValidateAndInferTypes() override;
 

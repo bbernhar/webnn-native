@@ -33,8 +33,8 @@ namespace webnn_native { namespace op {
         }
         ~Unary() override = default;
 
-        MaybeError AddToGraph(GraphBase* model) const override {
-            return model->AddUnary(this);
+        MaybeError AddToGraph(GraphBase* graph) const override {
+            return graph->AddUnary(this);
         }
         MaybeError ValidateAndInferTypes() override;
         UnaryOpType GetType() const {

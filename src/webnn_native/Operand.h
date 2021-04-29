@@ -33,7 +33,7 @@ namespace webnn_native {
         // It's used for getting inputs when traversaling model tree.
         const std::vector<Ref<OperandBase>>& Inputs() const;
         // Add the operand to model for specific backend.
-        virtual MaybeError AddToGraph(GraphBase* model) const;
+        virtual MaybeError AddToGraph(GraphBase* graph) const;
 
         ml::OperandType Type() const {
             return mType;

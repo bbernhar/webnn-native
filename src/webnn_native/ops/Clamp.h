@@ -26,8 +26,8 @@ namespace webnn_native { namespace op {
         Clamp(GraphBuilderBase* builder, OperandBase* input, ClampOptions const* options);
         ~Clamp() override = default;
 
-        MaybeError AddToGraph(GraphBase* model) const override {
-            return model->AddClamp(this);
+        MaybeError AddToGraph(GraphBase* graph) const override {
+            return graph->AddClamp(this);
         }
 
         ClampOptions const* GetOptions() const {

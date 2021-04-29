@@ -29,8 +29,8 @@ namespace webnn_native { namespace op {
                   BatchNormOptions const* options);
         ~BatchNorm() override = default;
 
-        MaybeError AddToGraph(GraphBase* model) const override {
-            return model->AddBatchNorm(this);
+        MaybeError AddToGraph(GraphBase* graph) const override {
+            return graph->AddBatchNorm(this);
         }
         MaybeError ValidateAndInferTypes() override;
 

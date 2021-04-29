@@ -123,8 +123,8 @@ namespace utils {
     ml::Graph AwaitBuild(const ml::GraphBuilder& builder, const std::vector<NamedOperand>& outputs);
 
     typedef struct {
-        const std::string& name;
-        const ml::Input& input;
+        const std::string name;
+        const ml::Input input;
     } NamedInput;
 
     typedef struct {

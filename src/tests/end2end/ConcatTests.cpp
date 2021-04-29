@@ -37,13 +37,11 @@ class ConcatTests : public WebnnTest {
                 {inputName, {input.value.data(), input.value.size() * sizeof(float)}});
             ++index;
         }
-        const ml::Operand output =
-            builder.Concat(inputsOperand.size(), inputsOperand.data(), axis);
+        const ml::Operand output = builder.Concat(inputsOperand.size(), inputsOperand.data(), axis);
         std::string outputName = std::to_string(inputs.size());
         const ml::Graph graph = utils::AwaitBuild(builder, {{outputName, output}});
         ASSERT_TRUE(graph);
-        const ml::Result result =
-            utils::AwaitCompute(graph, namedInputs).Get(outputName.data());
+        const ml::Result result = utils::AwaitCompute(graph, namedInputs).Get(outputName.data());
         EXPECT_TRUE(utils::CheckShape(result, expectedShape));
         EXPECT_TRUE(utils::CheckValue(result, expectedValue));
     }

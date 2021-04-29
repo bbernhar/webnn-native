@@ -46,8 +46,7 @@ TEST_F(SubTests, SubTwoInputs) {
         1.4805148,   1.867559,    0.90604466,  -0.86122566, 1.9100649,   -0.26800337, 0.8024564,
         0.947252,    -0.15501009, 0.61407936,  0.9222067};
     const ml::Input inputB = {dataB.data(), dataB.size() * sizeof(float)};
-    const ml::Result result =
-        utils::AwaitCompute(graph, {{"a", inputA}, {"b", inputB}}).Get("c");
+    const ml::Result result = utils::AwaitCompute(graph, {{"a", inputA}, {"b", inputB}}).Get("c");
     EXPECT_TRUE(utils::CheckShape(result, {3, 4, 5}));
     const std::vector<float> expectedValue(
         {2.436513,    0.7597104,  1.7918843,   3.9671757,  1.6901319,   -0.5754969, 2.5802867,
@@ -82,8 +81,7 @@ TEST_F(SubTests, SubBroadcast) {
     const ml::Input inputA = {dataA.data(), dataA.size() * sizeof(float)};
     const std::vector<float> dataB = {-0.35399392, -1.3749512, -0.6436184, -2.2234032, 0.62523144};
     const ml::Input inputB = {dataB.data(), dataB.size() * sizeof(float)};
-    const ml::Result result =
-        utils::AwaitCompute(graph, {{"a", inputA}, {"b", inputB}}).Get("c");
+    const ml::Result result = utils::AwaitCompute(graph, {{"a", inputA}, {"b", inputB}}).Get("c");
     EXPECT_TRUE(utils::CheckShape(result, {3, 4, 5}));
     const std::vector<float> expectedValue({
         0.73041946,  0.27555048, 0.9418566,   3.549789,    -1.3197993,  0.20435938,  0.9397977,

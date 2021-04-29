@@ -125,9 +125,8 @@ namespace webnn_native { namespace dml {
             return strides;
         }
 
-        ::dml::TensorDimensions CalculateFilterLayoutStrides(
-            ml::FilterOperandLayout filterLayout,
-            ::dml::TensorDimensions sizes) {
+        ::dml::TensorDimensions CalculateFilterLayoutStrides(ml::FilterOperandLayout filterLayout,
+                                                             ::dml::TensorDimensions sizes) {
             uint32_t hStride = 0, wStride = 0, iStride = 0, oStride = 0;
             switch (filterLayout) {
                 case ml::FilterOperandLayout::Hwio:

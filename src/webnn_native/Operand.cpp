@@ -34,7 +34,7 @@ namespace webnn_native {
         return new OperandBase(GraphBuilder, ObjectBase::kError);
     }
 
-    MaybeError OperandBase::AddToGraph(GraphBase* model) const {
+    MaybeError OperandBase::AddToGraph(GraphBase* graph) const {
         DAWN_UNREACHABLE();
     }
 

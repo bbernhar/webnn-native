@@ -104,8 +104,7 @@ namespace webnn_native { namespace onednn {
     };
 
     namespace {
-        dnnl_status_t GetDnnlDataType(ml::OperandType operandType,
-                                      dnnl_data_type_t& dnnlDataType) {
+        dnnl_status_t GetDnnlDataType(ml::OperandType operandType, dnnl_data_type_t& dnnlDataType) {
             if (operandType == ml::OperandType::Float32) {
                 dnnlDataType = dnnl_f32;
             } else if (operandType == ml::OperandType::Float16) {

@@ -155,14 +155,16 @@ source_set("webnn_end2end_tests_sources") {
 
   deps = [
     ":gmock_and_gtest",
+    "${webnn_root}/examples:webnn_sample_utils",
     "${webnn_root}/src/common",
     "${webnn_root}/src/webnn:webnn_proc",
     "${webnn_root}/src/webnn:webnncpp",
     "${webnn_root}/src/webnn_native",
-    "${webnn_root}/examples:webnn_sample_utils",
   ]
 
   sources = [
+    "${webnn_root}/examples/SqueezeNet/SqueezeNet.cpp",
+    "${webnn_root}/examples/SqueezeNet/SqueezeNet.h",
     "WebnnTest.cpp",
     "WebnnTest.h",
     "end2end/AddTests.cpp",
@@ -180,8 +182,6 @@ source_set("webnn_end2end_tests_sources") {
     "end2end/SoftmaxTests.cpp",
     "end2end/SubTests.cpp",
     "end2end/TransposeTests.cpp",
-    "${webnn_root}/examples/SqueezeNet/SqueezeNet.cpp",
-    "${webnn_root}/examples/SqueezeNet/SqueezeNet.h",
     "end2end/models/SqueezeNetNchw.cpp",
     "end2end/models/SqueezeNetNhwc.cpp",
   ]

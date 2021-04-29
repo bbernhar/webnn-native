@@ -29,8 +29,8 @@ namespace webnn_native { namespace op {
         }
         ~Concat() override = default;
 
-        MaybeError AddToGraph(GraphBase* model) const override {
-            return model->AddConcat(this);
+        MaybeError AddToGraph(GraphBase* graph) const override {
+            return graph->AddConcat(this);
         }
         uint32_t GetAxis() const {
             return mAxis;

@@ -30,7 +30,7 @@ class BatchNormTests : public WebnnTest {
                         const ml::BatchNormOptions* options = nullptr) {
         const ml::Operand a = utils::BuildInput(builder, "a", inputShape);
         const ml::Operand mean = utils::BuildConstant(builder, meanShape, meanData.data(),
-                                                         meanData.size() * sizeof(float));
+                                                      meanData.size() * sizeof(float));
         const ml::Operand variance = utils::BuildConstant(
             builder, varianceShape, varianceData.data(), varianceData.size() * sizeof(float));
         const ml::Operand b = builder.BatchNorm(a, mean, variance, options);
@@ -41,7 +41,7 @@ class BatchNormTests : public WebnnTest {
         EXPECT_TRUE(utils::CheckShape(result, inputShape));
         EXPECT_TRUE(utils::CheckValue(result, expectedValue));
     }
-    ml::GraphBuilder  builder;
+    ml::GraphBuilder builder;
 };
 
 TEST_F(BatchNormTests, BatchNormNchw) {

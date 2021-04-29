@@ -67,8 +67,8 @@ namespace webnn_native { namespace op {
         }
     }
 
-    MaybeError Pool2d::AddToGraph(GraphBase* model) const {
-        return model->AddPool2d(this);
+    MaybeError Pool2d::AddToGraph(GraphBase* graph) const {
+        return graph->AddPool2d(this);
     }
 
     Pool2dOptions const* Pool2d::GetOptions() const {

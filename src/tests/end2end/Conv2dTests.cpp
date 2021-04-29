@@ -53,8 +53,7 @@ class Conv2dTests : public WebnnTest {
         ASSERT_TRUE(graph);
         const ml::Result result =
             utils::AwaitCompute(
-                graph,
-                {{"input", {input.value.data(), input.value.size() * sizeof(float)}}})
+                graph, {{"input", {input.value.data(), input.value.size() * sizeof(float)}}})
                 .Get("output");
         EXPECT_TRUE(utils::CheckShape(result, expected.shape));
         EXPECT_TRUE(utils::CheckValue(result, expected.value));
@@ -83,7 +82,7 @@ TEST_F(Conv2dTests, Conv2dWithPaddingNhwcHwio) {
     utils::Conv2dOptions options;
     options.padding = {1, 1, 1, 1};
     options.inputLayout = ml::InputOperandLayout::Nhwc;
-options.filterLayout = ml::FilterOperandLayout::Hwio;
+    options.filterLayout = ml::FilterOperandLayout::Hwio;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 

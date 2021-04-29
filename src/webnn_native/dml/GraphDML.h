@@ -63,9 +63,10 @@ namespace webnn_native { namespace dml {
       private:
         void CompileImpl(BuildGraphCallbackDelgate delgate) override;
         void ComputeImpl(NamedInputsBase* inputs,
-                         MLComputeGraphCallback callback, void* userdata,
+                         MLComputeGraphCallback callback,
+                         void* userdata,
                          NamedOutputsBase* outputs) override;
-        
+
         ::dml::Expression BindingConstant(DML_TENSOR_DATA_TYPE dmlTensorType,
                                           ::dml::TensorDimensions dmlTensorDims,
                                           void const* value,

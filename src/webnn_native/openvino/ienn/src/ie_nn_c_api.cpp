@@ -165,9 +165,9 @@ IEStatusCode ie_model_add_binary(ie_model_t* model,
 }
 
 IEStatusCode ie_model_add_clamp(ie_model_t* model,
-                                    ie_operand_t* input,
-                                    ie_clamp_options* options,
-                                    ie_operand_t** operand) {
+                                ie_operand_t* input,
+                                ie_clamp_options* options,
+                                ie_operand_t** operand) {
   if (model == nullptr || input == nullptr) {
     return IEStatusCode::GENERAL_ERROR;
   }
