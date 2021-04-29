@@ -1074,6 +1074,9 @@ namespace webnn_native { namespace dml {
     }
 
     MaybeError Graph::Finish() {
+        if (mInputs.empty()) {
+            return DAWN_VALIDATION_ERROR("Model inputs must be set.");
+        }
         if (mOutputs.size() == 1) {
             auto output = mOutputs.begin();
             if (output->second.Impl()->GetNode().type == ::dml::detail::NodeType::Reinterpret) {
