@@ -87,6 +87,7 @@ enum ie_filter_operand_layout : uint32_t {
   Oihw = 0x00000000,
   Hwio = 0x00000001,
   Ohwi = 0x00000002,
+  Ihwo = 0x00000003,
 };
 
 enum ie_auto_pad : uint32_t {

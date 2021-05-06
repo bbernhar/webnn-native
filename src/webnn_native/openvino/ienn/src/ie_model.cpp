@@ -75,9 +75,21 @@ ngraph::Output<ngraph::Node> TransposeFilterLayout(
     return node;
   }
 
-  AxisVector order = layout == ie_filter_operand_layout::Hwio
-                         ? AxisVector{3, 2, 0, 1}
-                         : AxisVector{0, 3, 1, 2};
+  AxisVector order;
+  switch (layout) {
+    case ie_filter_operand_layout::Hwio:
+      order = AxisVector{3, 2, 0, 1};
+      break;
+    case ie_filter_operand_layout::Ohwi:
+      order = AxisVector{0, 3, 1, 2};
+      break;
+    case ie_filter_operand_layout::Ihwo:
+      order = AxisVector{3, 0, 1, 2};
+      break;
+    default:
+      assert(0);
+      break;
+  }
   const auto order_node =
       op::Constant::create(element::i64, Shape{order.size()}, order);
   auto transpose_node = std::make_shared<op::v1::Transpose>(node, order_node);

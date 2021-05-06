@@ -100,6 +100,20 @@ TEST_F(Conv2dTests, Conv2dWithPaddingNhwcOhwi) {
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
+TEST_F(Conv2dTests, Conv2dWithPaddingNhwIhwo) {
+    Tensor input = {{1, 5, 5, 1}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                   13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
+    Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
+    Tensor expected = {{1, 5, 5, 1},
+                       {12.,  21., 27., 33.,  24.,  33.,  54.,  63., 72.,  51.,  63.,  99., 108.,
+                        117., 81., 93., 144., 153., 162., 111., 72., 111., 117., 123., 84.}};
+    utils::Conv2dOptions options;
+    options.padding = {1, 1, 1, 1};
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    CheckConv2d(input, filter, expected, options.AsPtr());
+}
+
 TEST_F(Conv2dTests, Conv2dWithoutPaddingDefault) {
     Tensor input = {{1, 1, 5, 5}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                                    13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
@@ -127,6 +141,17 @@ TEST_F(Conv2dTests, Conv2dWithoutPaddingNhwcOhwi) {
     utils::Conv2dOptions options;
     options.inputLayout = ml::InputOperandLayout::Nhwc;
     options.filterLayout = ml::FilterOperandLayout::Ohwi;
+    CheckConv2d(input, filter, expected, options.AsPtr());
+}
+
+TEST_F(Conv2dTests, Conv2dWithoutPaddingNhwcIhwo) {
+    Tensor input = {{1, 5, 5, 1}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                   13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
+    Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
+    Tensor expected = {{1, 3, 3, 1}, {54., 63., 72., 99., 108., 117., 144., 153., 162.}};
+    utils::Conv2dOptions options;
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
@@ -173,6 +198,21 @@ TEST_F(Conv2dTests, Conv2dWithStrides2AndPaddingNhwcOhwi) {
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
+TEST_F(Conv2dTests, Conv2dWithStrides2AndPaddingNhwcIhwo) {
+    Tensor input = {{1, 7, 5, 1},
+                    {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17,
+                     18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34}};
+    Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
+    Tensor expected = {{1, 4, 3, 1},
+                       {12., 27., 24., 63., 108., 81., 123., 198., 141., 112., 177., 124.}};
+    utils::Conv2dOptions options;
+    options.padding = {1, 1, 1, 1};
+    options.strides = {2, 2};
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    CheckConv2d(input, filter, expected, options.AsPtr());
+}
+
 TEST_F(Conv2dTests, Conv2dWithStrides2AndAsymetricPaddingDefault) {
     Tensor input = {{1, 1, 5, 5}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                                    13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
@@ -211,6 +251,20 @@ TEST_F(Conv2dTests, Conv2dWithStrides2AndAsymetricPaddingNhwcOhwi) {
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
+TEST_F(Conv2dTests, Conv2dWithStrides2AndAsymetricPaddingNhwcIhwo) {
+    Tensor input = {{1, 5, 5, 1}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                   13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
+    const std::vector<float> filterData(8, 1);
+    Tensor filter = {{1, 4, 2, 1}, std::vector<float>(8, 1)};
+    Tensor expected = {{1, 3, 3, 1}, {33, 45, 27, 104, 120, 66, 72, 80, 43}};
+    utils::Conv2dOptions options;
+    options.padding = {1, 2, 0, 1};
+    options.strides = {2, 2};
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    CheckConv2d(input, filter, expected, options.AsPtr());
+}
+
 TEST_F(Conv2dTests, FusedDepthwiseConv2dWithNhwcHwio) {
     Tensor input = {{1, 2, 2, 4}, {10, 21, 10, 0, 10, 22, 20, 0, 10, 23, 30, 0, 10, 24, 40, 0}};
     Tensor filter = {{2, 2, 1, 4},
@@ -221,6 +275,20 @@ TEST_F(Conv2dTests, FusedDepthwiseConv2dWithNhwcHwio) {
     utils::Conv2dOptions options;
     options.inputLayout = ml::InputOperandLayout::Nhwc;
     options.filterLayout = ml::FilterOperandLayout::Hwio;
+    options.groups = 4;
+    CheckConv2d(input, filter, expected, options.AsPtr(), bias);
+}
+
+TEST_F(Conv2dTests, FusedDepthwiseConv2dWithNhwcIhwo) {
+    Tensor input = {{1, 2, 2, 4}, {10, 21, 10, 0, 10, 22, 20, 0, 10, 23, 30, 0, 10, 24, 40, 0}};
+    Tensor filter = {{1, 2, 2, 4},
+                     {0.25, 0.0, 10.0, 50.0, 0.25, 1.0, 20.0, 50.0, 0.25, 0.0, 30.0, 50.0, 0.25,
+                      1.0, 40.0, 50.0}};
+    Tensor bias = {{4}, {{6000, 7000, 8000, 9000}}};
+    Tensor expected = {{1, 1, 1, 4}, {6010, 7046, 11000, 9000}};
+    utils::Conv2dOptions options;
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
     options.groups = 4;
     CheckConv2d(input, filter, expected, options.AsPtr(), bias);
 }
@@ -275,6 +343,20 @@ TEST_F(Conv2dTests, FusedConv2dWithPaddingNhwcOhwi) {
     options.padding = {1, 1, 1, 1};
     options.inputLayout = ml::InputOperandLayout::Nhwc;
     options.filterLayout = ml::FilterOperandLayout::Ohwi;
+    CheckConv2d(input, filter, expected, options.AsPtr(), bias, FusedActivation::RELU);
+}
+
+TEST_F(Conv2dTests, FusedConv2dWithPaddingNhwcIhwo) {
+    Tensor input = {{1, 5, 5, 1}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
+                                   13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
+    Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
+    Tensor bias = {{1}, {-100}};
+    Tensor expected = {{1, 5, 5, 1}, {0.,  0., 0., 0.,  0.,  0.,  0.,  0., 0.,  0.,  0.,  0., 8.,
+                                      17., 0., 0., 44., 53., 62., 11., 0., 11., 17., 23., 0.}};
+    utils::Conv2dOptions options;
+    options.padding = {1, 1, 1, 1};
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr(), bias, FusedActivation::RELU);
 }
 
@@ -353,6 +435,18 @@ TEST_F(Conv2dTests, Conv2dWithAutoPadSameLowerNhwcOhwi) {
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
+TEST_F(Conv2dTests, Conv2dWithAutoPadSameLowerNhwcIhwo) {
+    Tensor input = {{1, 4, 4, 1}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
+    Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
+    Tensor expected = {{1, 2, 2, 1}, {10., 24., 51., 90.}};
+    utils::Conv2dOptions options;
+    options.strides = {2, 2};
+    options.autoPad = webnn::AutoPad::SameLower;
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    CheckConv2d(input, filter, expected, options.AsPtr());
+}
+
 TEST_F(Conv2dTests, Conv2dWithAutoPadSameUpperDefault) {
     Tensor input = {{1, 1, 5, 5}, {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12,
                                    13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24}};
@@ -421,5 +515,17 @@ TEST_F(Conv2dTests, Conv2dWithAutoPadSameUpperNhwcOhwi) {
     options.autoPad = ml::AutoPad::SameUpper;
     options.inputLayout = ml::InputOperandLayout::Nhwc;
     options.filterLayout = ml::FilterOperandLayout::Ohwi;
+    CheckConv2d(input, filter, expected, options.AsPtr());
+}
+
+TEST_F(Conv2dTests, Conv2dWithAutoPadSameUpperNhwcIhwo) {
+    Tensor input = {{1, 4, 4, 1}, {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}};
+    Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
+    Tensor expected = {{1, 2, 2, 1}, {45., 39., 66., 50.}};
+    utils::Conv2dOptions options;
+    options.strides = {2, 2};
+    options.autoPad = webnn::AutoPad::SameUpper;
+    options.inputLayout = webnn::InputOperandLayout::Nhwc;
+    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }

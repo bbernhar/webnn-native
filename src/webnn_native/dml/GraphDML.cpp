@@ -141,6 +141,12 @@ namespace webnn_native { namespace dml {
                     wStride = sizes[3];
                     iStride = 1;
                     break;
+                case webnn::FilterOperandLayout::Ihwo:
+                    iStride = sizes[1] * sizes[2] * sizes[3];
+                    hStride = sizes[2] * sizes[3];
+                    wStride = sizes[3];
+                    oStride = 1;
+                    break;
                 default:
                     assert(0);
                     break;
@@ -172,6 +178,15 @@ namespace webnn_native { namespace dml {
                     filter = ::dml::Reinterpret(
                         filter, newFilterDims,
                         CalculateFilterLayoutStrides(ml::FilterOperandLayout::Hwio, filterDims));
+                    break;
+                case webnn::FilterOperandLayout::Ihwo:
+                    newFilterDims[0] = filterDims[3];
+                    newFilterDims[1] = filterDims[0];
+                    newFilterDims[2] = filterDims[1];
+                    newFilterDims[3] = filterDims[2];
+                    filter = ::dml::Reinterpret(
+                        filter, newFilterDims,
+                        CalculateFilterLayoutStrides(webnn::FilterOperandLayout::Ihwo, filterDims));
                     break;
                 default:
                     assert(0);

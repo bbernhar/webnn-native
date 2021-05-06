@@ -157,7 +157,8 @@
     "values": [
       {"value": 0, "name": "oihw"},
       {"value": 1, "name": "hwio"},
-      {"value": 2, "name": "ohwi"}
+      {"value": 2, "name": "ohwi"},
+      {"value": 3, "name": "ihwo"}
     ]
   },
   "auto pad": {
