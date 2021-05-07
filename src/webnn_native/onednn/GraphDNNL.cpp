@@ -19,11 +19,11 @@
 #include "common/Assert.h"
 #include "common/Log.h"
 #include "webnn_native/ErrorData.h"
+#include "webnn_native/NamedInputs.h"
+#include "webnn_native/NamedOutputs.h"
 #include "webnn_native/NamedResults.h"
 #include "webnn_native/Operand.h"
 #include "webnn_native/Result.h"
-#include "webnn_native/NamedInputs.h"
-#include "webnn_native/NamedOutputs.h"
 
 #define FAILED(status) (((dnnl_status_t)(status)) != dnnl_success)
 
@@ -80,7 +80,7 @@ const char* dnnl_status2str(dnnl_status_t v) {
     do {                                                                                   \
         std::string message = std::string(what) + std::string(" returns oneDNN error: ") + \
                               std::string(dnnl_status2str(s_));                            \
-        callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);            \
+        callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);          \
         return;                                                                            \
     } while (0)
 

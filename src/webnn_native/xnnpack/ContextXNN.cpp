@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "webnn_native/xnnpack/NeuralNetworkContextXNN.h"
+#include "webnn_native/xnnpack/ContextXNN.h"
 
 #include "common/Log.h"
 #include "common/RefCounted.h"
-#include "webnn_native/xnnpack/ModelBuilderXNN.h"
+#include "webnn_native/xnnpack/GraphXNN.h"
 
 namespace webnn_native { namespace xnnpack {
 
-    NeuralNetworkContextBase* Create() {
-        Ref<NeuralNetworkContextBase> context = AcquireRef(new NeuralNetworkContext());
-        xnn_status status = reinterpret_cast<NeuralNetworkContext*>(context.Get())->Init();
+    ContextBase* Create() {
+        Ref<ContextBase> context = AcquireRef(new Context());
+        xnn_status status = reinterpret_cast<Context*>(context.Get())->Init();
         if (status != xnn_status_success) {
             dawn::ErrorLog() << "Failed to init XNNPack:" << status;
             return nullptr;
@@ -30,10 +30,10 @@ namespace webnn_native { namespace xnnpack {
         return context.Detach();
     }
 
-    NeuralNetworkContext::NeuralNetworkContext() {
+    Context::Context() {
     }
 
-    NeuralNetworkContext::~NeuralNetworkContext() {
+    Context::~Context() {
         xnn_status status = xnn_deinitialize();
         if (status != xnn_status_success) {
             dawn::ErrorLog() << "xnn_deinitialize failed: " << status;
@@ -44,7 +44,7 @@ namespace webnn_native { namespace xnnpack {
         }
     }
 
-    xnn_status NeuralNetworkContext::Init() {
+    xnn_status Context::Init() {
         xnn_status status = xnn_initialize(NULL);
         if (status != xnn_status_success) {
             dawn::ErrorLog() << "xnn_initialize failed: " << status;
@@ -61,12 +61,12 @@ namespace webnn_native { namespace xnnpack {
         return xnn_status_success;
     }
 
-    pthreadpool_t NeuralNetworkContext::GetThreadpool() {
+    pthreadpool_t Context::GetThreadpool() {
         return mThreadpool;
     }
 
-    GraphBuilderBase* NeuralNetworkContext::CreateModelBuilderImpl() {
-        return new ModelBuilder(this);
+    GraphBase* Context::CreateGraphImpl() {
+        return new Graph(this);
     }
 
 }}  // namespace webnn_native::xnnpack

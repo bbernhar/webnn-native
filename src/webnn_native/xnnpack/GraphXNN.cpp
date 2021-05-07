@@ -12,18 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "webnn_native/xnnpack/ModelXNN.h"
+#include "webnn_native/xnnpack/GraphXNN.h"
 
 #include <numeric>
 
 #include "common/Assert.h"
 #include "common/Log.h"
 #include "webnn_native/ErrorData.h"
+#include "webnn_native/NamedInputs.h"
+#include "webnn_native/NamedOutputs.h"
 #include "webnn_native/NamedResults.h"
 #include "webnn_native/Operand.h"
 #include "webnn_native/Result.h"
-#include "webnn_native/xnnpack/CompilationXNN.h"
-#include "webnn_native/xnnpack/NeuralNetworkContextXNN.h"
+#include "webnn_native/xnnpack/ContextXNN.h"
 
 #define FAILED(status) (((xnn_status)(status)) != xnn_status_success)
 
@@ -82,7 +83,7 @@ const char* xnn_status2str(xnn_status v) {
     do {                                                                                    \
         std::string message = std::string(what) + std::string(" returns XNNPACK error: ") + \
                               std::string(xnn_status2str(s_));                              \
-        callback(WebnnComputeStatus_Error, nullptr, message.c_str(), userdata);             \
+        callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);           \
         return;                                                                             \
     } while (0)
 
@@ -167,10 +168,10 @@ namespace webnn_native { namespace xnnpack {
         }
     }  // anonymous namespace
 
-    Model::Model(ModelBuilder* modelBuilder) : GraphBase(modelBuilder), mXnnOperator(nullptr) {
+    Graph::Graph(Context* context) : GraphBase(context), mXnnOperator(nullptr) {
     }
 
-    Model::~Model() {
+    Graph::~Graph() {
         if (mXnnOperator) {
             if (FAILED(xnn_delete_operator(mXnnOperator))) {
                 dawn::ErrorLog() << "xnn_delete_operator failed.";
@@ -178,7 +179,7 @@ namespace webnn_native { namespace xnnpack {
         }
     }
 
-    MaybeError Model::AddConstant(const op::Constant* constant) {
+    MaybeError Graph::AddConstant(const op::Constant* constant) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::CONSTANT);
         const OperandDescriptor* desc = constant->GetOperandDescriptor();
         DAWN_TRY(GetXnnDataType(desc->type, info->dataType));
@@ -193,7 +194,7 @@ namespace webnn_native { namespace xnnpack {
         return {};
     }
 
-    MaybeError Model::AddInput(const op::Input* input) {
+    MaybeError Graph::AddInput(const op::Input* input) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::INPUT);
         const OperandDescriptor* desc = input->GetOperandDescriptor();
         DAWN_TRY(GetXnnDataType(desc->type, info->dataType));
@@ -203,7 +204,7 @@ namespace webnn_native { namespace xnnpack {
         return {};
     }
 
-    MaybeError Model::AddOutput(const std::string& name, const OperandBase* op) {
+    MaybeError Graph::AddOutput(const std::string& name, const OperandBase* op) {
         std::shared_ptr<OperandInfo>& info = mOperandInfoMap.at(op);
         if (info->opType == OperandType::INPUT || info->opType == OperandType::CONSTANT) {
             return DAWN_INTERNAL_ERROR("There is no operator to be created.");
@@ -212,42 +213,42 @@ namespace webnn_native { namespace xnnpack {
         return {};
     }
 
-    MaybeError Model::AddBinary(const op::Binary* binary) {
+    MaybeError Graph::AddBinary(const op::Binary* binary) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::BINARY);
         mOperandInfoMap.insert(std::make_pair(binary, info));
         mOperandsToBuild.push_back(binary);
         return {};
     }
 
-    MaybeError Model::AddClamp(const op::Clamp* clamp) {
+    MaybeError Graph::AddClamp(const op::Clamp* clamp) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::CLAMP);
         mOperandInfoMap.insert(std::make_pair(clamp, info));
         mOperandsToBuild.push_back(clamp);
         return {};
     }
 
-    MaybeError Model::AddConv2d(const op::Conv2d* conv2d) {
+    MaybeError Graph::AddConv2d(const op::Conv2d* conv2d) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::CONV2D);
         mOperandInfoMap.insert(std::make_pair(conv2d, info));
         mOperandsToBuild.push_back(conv2d);
         return {};
     }
 
-    MaybeError Model::AddPool2d(const op::Pool2d* pool2d) {
+    MaybeError Graph::AddPool2d(const op::Pool2d* pool2d) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::POOL2D);
         mOperandInfoMap.insert(std::make_pair(pool2d, info));
         mOperandsToBuild.push_back(pool2d);
         return {};
     }
 
-    MaybeError Model::AddUnary(const op::Unary* unary) {
+    MaybeError Graph::AddUnary(const op::Unary* unary) {
         std::shared_ptr<OperandInfo> info = std::make_shared<OperandInfo>(OperandType::UNARY);
         mOperandInfoMap.insert(std::make_pair(unary, info));
         mOperandsToBuild.push_back(unary);
         return {};
     }
 
-    MaybeError Model::Finish() {
+    MaybeError Graph::Finish() {
         if (mOperandsToBuild.size() == 0) {
             return DAWN_INTERNAL_ERROR("No operators to build.");
         }
@@ -296,7 +297,7 @@ namespace webnn_native { namespace xnnpack {
         return {};
     }
 
-    xnn_status Model::CreateXnnOp(const op::Unary* unary) {
+    xnn_status Graph::CreateXnnOp(const op::Unary* unary) {
         DAWN_ASSERT(unary->Inputs().size() == 1);
         const OperandBase* inputOperand = unary->Inputs()[0].Get();
         DAWN_ASSERT(mOperandInfoMap.find(inputOperand) != mOperandInfoMap.end());
@@ -320,7 +321,7 @@ namespace webnn_native { namespace xnnpack {
         return xnn_status_success;
     }
 
-    xnn_status Model::CreateXnnOp(const op::Clamp* clamp) {
+    xnn_status Graph::CreateXnnOp(const op::Clamp* clamp) {
         const OperandBase* inputOperand = clamp->Inputs()[0].Get();
         DAWN_ASSERT(mOperandInfoMap.find(inputOperand) != mOperandInfoMap.end());
         const std::shared_ptr<OperandInfo>& inputInfo = mOperandInfoMap.at(inputOperand);
@@ -357,7 +358,7 @@ namespace webnn_native { namespace xnnpack {
         return xnn_status_success;
     }
 
-    xnn_status Model::CreateXnnOp(const op::Binary* binary) {
+    xnn_status Graph::CreateXnnOp(const op::Binary* binary) {
         DAWN_ASSERT(binary->Inputs().size() == 2);
         const OperandBase* input0Operand = binary->Inputs()[0].Get();
         DAWN_ASSERT(mOperandInfoMap.find(input0Operand) != mOperandInfoMap.end());
@@ -395,7 +396,7 @@ namespace webnn_native { namespace xnnpack {
         return xnn_status_success;
     }
 
-    xnn_status Model::CreateXnnOp(const op::Pool2d* pool2d) {
+    xnn_status Graph::CreateXnnOp(const op::Pool2d* pool2d) {
         DAWN_ASSERT(pool2d->Inputs().size() == 1);
         const OperandBase* inputOperand = pool2d->Inputs()[0].Get();
         DAWN_ASSERT(mOperandInfoMap.find(inputOperand) != mOperandInfoMap.end());
@@ -468,7 +469,7 @@ namespace webnn_native { namespace xnnpack {
         return xnn_status_success;
     }
 
-    xnn_status Model::CreateXnnOp(const op::Conv2d* conv2d,
+    xnn_status Graph::CreateXnnOp(const op::Conv2d* conv2d,
                                   const op::Binary* add,
                                   const op::Clamp* clamp) {
         DAWN_ASSERT(conv2d->Inputs().size() == 2);
@@ -643,26 +644,22 @@ namespace webnn_native { namespace xnnpack {
         return xnn_status_success;
     }
 
-    size_t Model::SizeOfOperandInfo(const std::shared_ptr<OperandInfo>& info) {
+    size_t Graph::SizeOfOperandInfo(const std::shared_ptr<OperandInfo>& info) {
         return std::accumulate(info->dims.begin(), info->dims.end(), 1, std::multiplies<size_t>()) *
                SizeOfXnnDataType(info->dataType);
     }
 
-    pthreadpool_t Model::GetThreadpool() {
-        return reinterpret_cast<NeuralNetworkContext*>(GetContext())->GetThreadpool();
+    pthreadpool_t Graph::GetThreadpool() {
+        return reinterpret_cast<Context*>(GetContext())->GetThreadpool();
     }
 
-    void Model::CompileImpl(WebnnCompileCallback callback,
-                            void* userdata,
-                            CompilationOptions const* options) {
-        Ref<Compilation> compilation = AcquireRef(new Compilation(this));
-        callback(WebnnCompileStatus_Success,
-                 reinterpret_cast<WebnnCompilation>(compilation.Detach()), nullptr, userdata);
+    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+        delgate(MLBuildGraphStatus_Success, this);
         return;
     }
 
-    void Model::ComputeImpl(NamedInputsBase* inputs,
-                            WebnnComputeCallback callback,
+    void Graph::ComputeImpl(NamedInputsBase* inputs,
+                            MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
         std::vector<const void*> inputBuffers(mInputs.size(), nullptr);
@@ -673,7 +670,7 @@ namespace webnn_native { namespace xnnpack {
         }
         for (auto& input : inputs->GetRecords()) {
             if (mExternalInputs.find(input.first) == mExternalInputs.end()) {
-                callback(WebnnComputeStatus_Error, nullptr, "Invalid parameters.", userdata);
+                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
                 return;
             }
             size_t index = mExternalInputs.at(input.first);
@@ -724,7 +721,7 @@ namespace webnn_native { namespace xnnpack {
             mXnnOperatorType == XnnOpType::max_pooling2d_nhwc_f32) {
             std::vector<size_t> inputDims = mInputs[0]->dims;
             if (!inputBuffers[0] || !outputBuffers[0]) {
-                callback(WebnnComputeStatus_Error, nullptr, "Invalid parameters.", userdata);
+                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
                 return;
             }
             const float* input = reinterpret_cast<const float*>(inputBuffers[0]);
@@ -750,7 +747,7 @@ namespace webnn_native { namespace xnnpack {
             size_t batchSize = std::accumulate(outputInfo->dims.begin(), outputInfo->dims.end(), 1,
                                                std::multiplies<size_t>());
             if (!inputBuffers[0] || !outputBuffers[0]) {
-                callback(WebnnComputeStatus_Error, nullptr, "Invalid parameters.", userdata);
+                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
                 return;
             }
             const float* input = reinterpret_cast<const float*>(inputBuffers[0]);
@@ -763,7 +760,7 @@ namespace webnn_native { namespace xnnpack {
             std::vector<size_t> dims0 = mInputs[0]->dims;
             std::vector<size_t> dims1 = mInputs[1]->dims;
             if (!inputBuffers[0] || !inputBuffers[1] || !outputBuffers[0]) {
-                callback(WebnnComputeStatus_Error, nullptr, "Invalid parameters.", userdata);
+                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
                 return;
             }
             const float* input0 = reinterpret_cast<const float*>(inputBuffers[0]);
@@ -783,13 +780,14 @@ namespace webnn_native { namespace xnnpack {
                                                        output, GetThreadpool()));
             }
         } else {
-            callback(WebnnComputeStatus_Error, nullptr, "The operator is not supported.", userdata);
+            callback(MLComputeGraphStatus_Error, nullptr, "The operator is not supported.",
+                     userdata);
             return;
         }
 
         CALLBACK_TRY(xnn_run_operator(mXnnOperator, GetThreadpool()));
 
-        callback(WebnnComputeStatus_Success, reinterpret_cast<WebnnNamedResults>(results.Detach()),
+        callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
                  nullptr, userdata);
     }
 

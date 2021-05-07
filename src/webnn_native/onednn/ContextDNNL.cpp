@@ -22,8 +22,7 @@ namespace webnn_native { namespace onednn {
 
     ContextBase* Create() {
         Ref<ContextBase> context = AcquireRef(new Context());
-        dnnl_status_t status =
-            reinterpret_cast<Context*>(context.Get())->CreateEngine();
+        dnnl_status_t status = reinterpret_cast<Context*>(context.Get())->CreateEngine();
         if (status != dnnl_success) {
             dawn::ErrorLog() << "Failed to create oneDNN engine.";
             return nullptr;

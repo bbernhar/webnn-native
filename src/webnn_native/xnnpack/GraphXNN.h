@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef WEBNN_NATIVE_XNNPACK_MODEL_XNN_H_
-#define WEBNN_NATIVE_XNNPACK_MODEL_XNN_H_
+#ifndef WEBNN_NATIVE_XNNPACK_GRAPH_XNN_H_
+#define WEBNN_NATIVE_XNNPACK_GRAPH_XNN_H_
 
 #include <map>
 #include <set>
@@ -32,14 +32,14 @@
 #include "webnn_native/ops/Reshape.h"
 #include "webnn_native/ops/Transpose.h"
 #include "webnn_native/ops/Unary.h"
-#include "webnn_native/xnnpack/ModelBuilderXNN.h"
+#include "webnn_native/xnnpack/ContextXNN.h"
 
 namespace webnn_native { namespace xnnpack {
 
-    class Model : public GraphBase {
+    class Graph : public GraphBase {
       public:
-        explicit Model(ModelBuilder* model_builder);
-        ~Model() override;
+        explicit Graph(Context* context);
+        ~Graph() override;
 
         virtual MaybeError AddConstant(const op::Constant* constant) override;
         virtual MaybeError AddInput(const op::Input* input) override;
@@ -51,17 +51,12 @@ namespace webnn_native { namespace xnnpack {
         virtual MaybeError AddUnary(const op::Unary* unary) override;
         virtual MaybeError Finish() override;
 
-        void ComputeImpl(NamedInputsBase* inputs,
-                         WebnnComputeCallback callback,
-                         void* userdata,
-                         NamedOutputsBase* outputs = nullptr);
-
-        friend class Compilation;
-
       private:
-        void CompileImpl(WebnnCompileCallback callback,
+        void CompileImpl(BuildGraphCallbackDelgate delgate) override;
+        void ComputeImpl(NamedInputsBase* inputs,
+                         MLComputeGraphCallback callback,
                          void* userdata,
-                         CompilationOptions const* options) override;
+                         NamedOutputsBase* outputs = nullptr) override;
 
         enum OperandType { INPUT, CONSTANT, BINARY, CLAMP, CONV2D, POOL2D, UNARY };
         struct OperandInfo {
@@ -111,4 +106,4 @@ namespace webnn_native { namespace xnnpack {
 
 }}  // namespace webnn_native::xnnpack
 
-#endif  // WEBNN_NATIVE_XNNPACK_MODEL_XNN_H_
+#endif  // WEBNN_NATIVE_XNNPACK_GRAPH_XNN_H_

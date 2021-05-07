@@ -38,6 +38,7 @@ namespace webnn_native { namespace null {
     }
 
     void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+        delgate(MLBuildGraphStatus_Error, nullptr);
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,

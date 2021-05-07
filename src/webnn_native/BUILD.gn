@@ -241,14 +241,10 @@ source_set("webnn_native_sources") {
 
   if (webnn_enable_xnnpack) {
     sources += [
-      "xnnpack/CompilationXNN.cpp",
-      "xnnpack/CompilationXNN.h",
-      "xnnpack/ModelBuilderXNN.cpp",
-      "xnnpack/ModelBuilderXNN.h",
-      "xnnpack/ModelXNN.cpp",
-      "xnnpack/ModelXNN.h",
-      "xnnpack/NeuralNetworkContextXNN.cpp",
-      "xnnpack/NeuralNetworkContextXNN.h",
+      "xnnpack/ContextXNN.cpp",
+      "xnnpack/ContextXNN.h",
+      "xnnpack/GraphXNN.cpp",
+      "xnnpack/GraphXNN.h",
     ]
 
     include_dirs = [

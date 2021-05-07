@@ -12,30 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef WEBNN_NATIVE_XNNPACK_NEURAL_NETWORK_CONTEXT_XNN_H_
-#define WEBNN_NATIVE_XNNPACK_NEURAL_NETWORK_CONTEXT_XNN_H_
+#ifndef WEBNN_NATIVE_XNNPACK_CONTEXT_XNN_H_
+#define WEBNN_NATIVE_XNNPACK_CONTEXT_XNN_H_
 
-#include "webnn_native/NeuralNetworkContext.h"
+#include "webnn_native/Context.h"
 
 #include <xnnpack.h>
 
 namespace webnn_native { namespace xnnpack {
 
-    class NeuralNetworkContext : public NeuralNetworkContextBase {
+    class Context : public ContextBase {
       public:
-        NeuralNetworkContext();
-        ~NeuralNetworkContext() override;
-
-        GraphBuilderBase* CreateModelBuilderImpl() override;
+        Context();
+        ~Context() override;
 
         xnn_status Init();
 
         pthreadpool_t GetThreadpool();
 
       private:
+        GraphBase* CreateGraphImpl() override;
+
         pthreadpool_t mThreadpool;
     };
 
 }}  // namespace webnn_native::xnnpack
 
-#endif  // WEBNN_NATIVE_XNNPACK_NEURAL_NETWORK_CONTEXT_XNN_H_
+#endif  // WEBNN_NATIVE_XNNPACK_CONTEXT_XNN_H_
