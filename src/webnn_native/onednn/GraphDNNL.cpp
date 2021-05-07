@@ -287,7 +287,7 @@ namespace webnn_native { namespace onednn {
             return dnnl_success;
         }
 
-        dnnl_status_t ComputeImplicitPaddingForAutoPad(webnn::AutoPad autoPad,
+        dnnl_status_t ComputeImplicitPaddingForAutoPad(ml::AutoPad autoPad,
                                                        uint32_t& paddingBegin,
                                                        uint32_t& paddingEnd,
                                                        uint32_t dilation,
@@ -299,11 +299,11 @@ namespace webnn_native { namespace onednn {
             uint32_t neededInput = (outSize - 1) * stride + effectiveFilter;
             uint32_t totalPadding = neededInput - inputSize > 0 ? neededInput - inputSize : 0;
             switch (autoPad) {
-                case webnn::AutoPad::SameUpper:
+                case ml::AutoPad::SameUpper:
                     paddingBegin = totalPadding / 2;
                     paddingEnd = (totalPadding + 1) / 2;
                     return dnnl_success;
-                case webnn::AutoPad::SameLower:
+                case ml::AutoPad::SameLower:
                     paddingBegin = (totalPadding + 1) / 2;
                     paddingEnd = totalPadding / 2;
                     return dnnl_success;
@@ -537,7 +537,7 @@ namespace webnn_native { namespace onednn {
         uint32_t paddingLeft = static_cast<uint32_t>(options->padding[2]);
         uint32_t paddingRight = static_cast<uint32_t>(options->padding[3]);
 
-        if (options->autoPad != webnn::AutoPad::Explicit) {
+        if (options->autoPad != ml::AutoPad::Explicit) {
             DAWN_TRY(ComputeImplicitPaddingForAutoPad(options->autoPad, paddingTop, paddingBottom,
                                                       options->dilations[0], inputDims[2],
                                                       filterDims[2], strides[0]));

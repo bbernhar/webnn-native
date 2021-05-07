@@ -21,20 +21,20 @@ namespace node {
     Operand::Operand(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Operand>(info) {
     }
 
-    webnn::Operand Operand::GetImpl() const {
+    ml::Operand Operand::GetImpl() const {
         return mImpl;
     }
 
-    void Operand::SetImpl(const webnn::Operand& operand) {
+    void Operand::SetImpl(const ml::Operand& operand) {
         mImpl = operand;
     }
 
     Napi::Object Operand::Initialize(Napi::Env env, Napi::Object exports) {
         Napi::HandleScope scope(env);
-        Napi::Function func = DefineClass(env, "Operand", {});
+        Napi::Function func = DefineClass(env, "MLOperand", {});
         constructor = Napi::Persistent(func);
         constructor.SuppressDestruct();
-        exports.Set("Operand", func);
+        exports.Set("MLOperand", func);
         return exports;
     }
 

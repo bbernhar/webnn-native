@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_COMPILATION_H_
-#define NODE_COMPILATION_H_
+#ifndef NODE_GRAPH_H_
+#define NODE_GRAPH_H_
 
 #include <napi.h>
 #include <webnn/webnn_cpp.h>
@@ -21,25 +21,25 @@
 
 namespace node {
 
-    class CompileAsyncWorker;
+    class BuildGraphWorker;
 
-    class Compilation : public Napi::ObjectWrap<Compilation> {
+    class Graph : public Napi::ObjectWrap<Graph> {
       public:
         static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
         static Napi::FunctionReference constructor;
 
-        explicit Compilation(const Napi::CallbackInfo& info);
-        ~Compilation() = default;
+        explicit Graph(const Napi::CallbackInfo& info);
+        ~Graph() = default;
 
       private:
-        friend CompileAsyncWorker;
+        friend BuildGraphWorker;
 
         Napi::Value Compute(const Napi::CallbackInfo& info);
 
-        webnn::Compilation mImpl;
+        ml::Graph mImpl;
         std::vector<std::string> mOutputNames;
     };
 
 }  // namespace node
 
-#endif  // NODE_COMPILATION_H_
+#endif  // NODE_GRAPH_H_

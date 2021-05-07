@@ -14,19 +14,17 @@
 
 #include "Index.h"
 
-#include "Compilation.h"
+#include "Context.h"
+#include "Graph.h"
+#include "GraphBuilder.h"
 #include "ML.h"
-#include "Model.h"
-#include "ModelBuilder.h"
-#include "NeuralNetworkContext.h"
 #include "Operand.h"
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     node::ML::Initialize(env, exports);
-    node::NeuralNetworkContext::Initialize(env, exports);
-    node::ModelBuilder::Initialize(env, exports);
-    node::Model::Initialize(env, exports);
-    node::Compilation::Initialize(env, exports);
+    node::Context::Initialize(env, exports);
+    node::GraphBuilder::Initialize(env, exports);
+    node::Graph::Initialize(env, exports);
     node::Operand::Initialize(env, exports);
 
     return exports;

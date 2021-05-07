@@ -25,11 +25,11 @@ namespace node { namespace op {
         std::vector<int32_t> strides;
         std::vector<int32_t> dilations;
         int32_t groups = 1;
-        webnn::AutoPad autoPad = webnn::AutoPad::Explicit;
-        webnn::InputOperandLayout inputLayout = webnn::InputOperandLayout::Nchw;
-        webnn::FilterOperandLayout filterLayout = webnn::FilterOperandLayout::Oihw;
+        ml::AutoPad autoPad = ml::AutoPad::Explicit;
+        ml::InputOperandLayout inputLayout = ml::InputOperandLayout::Nchw;
+        ml::FilterOperandLayout filterLayout = ml::FilterOperandLayout::Oihw;
 
-        const webnn::Conv2dOptions* AsPtr() {
+        const ml::Conv2dOptions* AsPtr() {
             if (!padding.empty()) {
                 mOptions.paddingCount = padding.size();
                 mOptions.padding = padding.data();
@@ -50,20 +50,20 @@ namespace node { namespace op {
         }
 
       private:
-        webnn::Conv2dOptions mOptions;
+        ml::Conv2dOptions mOptions;
     };
 
-    Napi::Value Conv2d::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+    Napi::Value Conv2d::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
         // Operand conv2d(Operand input, Operand filter, optional Conv2dOptions options = {});
         WEBNN_NODE_ASSERT(info.Length() == 2 || info.Length() == 3,
                           "The number of arguments is invalid.");
 
-        webnn::Operand input;
+        ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
-        webnn::Operand filter;
+        ml::Operand filter;
         WEBNN_NODE_ASSERT(GetOperand(info[1], filter), "The filter parameter is invalid.");
 
-        webnn::Operand conv2d;
+        ml::Operand conv2d;
         if (info.Length() == 2) {
             conv2d = builder.Conv2d(input, filter);
         } else if (info.Length() == 3) {

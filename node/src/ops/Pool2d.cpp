@@ -25,9 +25,9 @@ namespace node { namespace op {
         std::vector<int32_t> padding;
         std::vector<int32_t> strides;
         std::vector<int32_t> dilations;
-        webnn::InputOperandLayout layout = webnn::InputOperandLayout::Nchw;
+        ml::InputOperandLayout layout = ml::InputOperandLayout::Nchw;
 
-        const webnn::Pool2dOptions* AsPtr() {
+        const ml::Pool2dOptions* AsPtr() {
             if (!windowDimensions.empty()) {
                 mOptions.windowDimensionsCount = windowDimensions.size();
                 mOptions.windowDimensions = windowDimensions.data();
@@ -49,11 +49,11 @@ namespace node { namespace op {
         }
 
       private:
-        webnn::Pool2dOptions mOptions;
+        ml::Pool2dOptions mOptions;
     };
 
     Napi::Value Pool2d::Build(const Napi::CallbackInfo& info,
-                              webnn::ModelBuilder builder,
+                              ml::GraphBuilder builder,
                               Pool2dType type) {
         //   Operand averagePool2d(Operand input, optional Pool2dOptions options = {});
         //   Operand l2Pool2d(Operand input, optional Pool2dOptions options = {});
@@ -61,7 +61,7 @@ namespace node { namespace op {
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
                           "The number of arguments is invalid.");
 
-        webnn::Operand input;
+        ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
         bool hasOptions = false;
@@ -101,7 +101,7 @@ namespace node { namespace op {
             }
         }
 
-        webnn::Operand pool2d;
+        ml::Operand pool2d;
         switch (type) {
             case Pool2dType::kAveragePool2d:
                 pool2d = builder.AveragePool2d(input, hasOptions ? options.AsPtr() : nullptr);

@@ -18,24 +18,24 @@
 
 namespace node { namespace op {
 
-    Napi::Value LeakyRelu::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+    Napi::Value LeakyRelu::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
         // partial interface ModelBuilder {
         //   Operand leakyRelu(Operand x, optional LeakyReluOptions options = {});
         // };
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
                           "The number of arguments is invalid.");
 
-        webnn::Operand input;
+        ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        webnn::Operand leakyRelu;
+        ml::Operand leakyRelu;
         if (info.Length() == 1) {
             leakyRelu = builder.LeakyRelu(input);
         } else {
             // dictionary LeakyReluOptions {
             //   float alpha = 0.01;
             // };
-            webnn::LeakyReluOptions options;
+            ml::LeakyReluOptions options;
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "alpha")) {

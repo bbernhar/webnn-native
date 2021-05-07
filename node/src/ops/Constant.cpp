@@ -27,7 +27,7 @@ namespace node { namespace op {
         };
     }  // namespace
 
-    Napi::Value Constant::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+    Napi::Value Constant::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
         //   Operand constant(OperandDescriptor desc, ArrayBufferView value);
         //   Operand constant(double value, optional OperandType type = "float32");
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
@@ -41,21 +41,21 @@ namespace node { namespace op {
         if (info[0].IsNumber()) {
             // Operand constant(double value, optional OperandType type = "float32");
             if (info.Length() == 1) {
-                desc.type = webnn::OperandType::Float32;
+                desc.type = ml::OperandType::Float32;
             } else {
                 WEBNN_NODE_ASSERT(GetOperandType(info[1], desc.type),
                                   "The type parameter is invalid.");
             }
             Napi::Number jsValue = info[0].As<Napi::Number>();
-            if (desc.type == webnn::OperandType::Float32) {
+            if (desc.type == ml::OperandType::Float32) {
                 scalar.floatValue = jsValue.FloatValue();
                 value = &scalar.floatValue;
                 size = sizeof(float);
-            } else if (desc.type == webnn::OperandType::Int32) {
+            } else if (desc.type == ml::OperandType::Int32) {
                 scalar.int32Value = jsValue.Int32Value();
                 value = &scalar.int32Value;
                 size = sizeof(int32_t);
-            } else if (desc.type == webnn::OperandType::Uint32) {
+            } else if (desc.type == ml::OperandType::Uint32) {
                 scalar.uint32Value = jsValue.Uint32Value();
                 value = &scalar.uint32Value;
                 size = sizeof(uint32_t);

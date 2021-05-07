@@ -19,17 +19,17 @@
 
 namespace node { namespace op {
 
-    Napi::Value Gemm::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+    Napi::Value Gemm::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
         // Operand gemm(Operand a, Operand b, optional GemmOptions options = {});
         WEBNN_NODE_ASSERT(info.Length() == 2 || info.Length() == 3,
                           "The number of arguments is invalid.");
 
-        webnn::Operand a;
+        ml::Operand a;
         WEBNN_NODE_ASSERT(GetOperand(info[0], a), "The a parameter is invalid.");
-        webnn::Operand b;
+        ml::Operand b;
         WEBNN_NODE_ASSERT(GetOperand(info[1], b), "The a parameter is invalid.");
 
-        webnn::Operand gemm;
+        ml::Operand gemm;
         if (info.Length() == 2) {
             gemm = builder.Gemm(a, b);
         } else {
@@ -40,7 +40,7 @@ namespace node { namespace op {
             //   boolean aTranspose = false;
             //   boolean bTranspose = false;
             // };
-            webnn::GemmOptions options;
+            ml::GemmOptions options;
             WEBNN_NODE_ASSERT(info[2].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[2].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "c")) {

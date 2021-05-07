@@ -49,19 +49,41 @@ namespace webnn_native { namespace ie {
     };
 
     namespace {
-
-        std::string GetOutputId(ie_model_t* model, size_t index) {
-            char* outputName;
-            IEStatusCode code = IE(ie_model_get_output_name)(model, index, &outputName);
-            if (code != IEStatusCode::OK) {
-                dawn::ErrorLog() << "Failing to get output name for IE.";
-                return std::string();
+        std::string GetOutputId(const std::map<std::string, std::string>& outputNameMap,
+                                const std::string& name) {
+            for (auto& outputName : outputNameMap) {
+                if (outputName.second == name) {
+                    return outputName.first;
+                }
             }
-            std::string name(outputName);
-            // The name has been kept in outputs object, so it can be free.
-            IE(ie_model_free_name)(&outputName);
 
-            return name;
+            return "";
+        }
+
+        IEStatusCode SetResult(const ie_compilation_t* compilation,
+                               const std::string& outputId,
+                               const std::string& outputName,
+                               Ref<NamedResultsBase>& results) {
+            void* outputBuffer;
+            size_t bufferLength;
+            IEStatusCode code = IE(ie_compilation_get_buffer)(compilation, outputId.data(),
+                                                              &outputBuffer, &bufferLength);
+            if (code != IEStatusCode::OK) {
+                return code;
+            }
+
+            ie_dimensions_t ieDimensions;
+            code = IE(ie_compilation_get_dimensions)(compilation, outputId.data(), &ieDimensions);
+            if (code != IEStatusCode::OK) {
+                return code;
+            }
+            std::vector<int32_t> dimensions(ieDimensions.dims,
+                                            ieDimensions.dims + ieDimensions.ranks);
+            code = IE(ie_compilation_free_dimensions)(&ieDimensions);
+            Ref<ResultBase> result =
+                AcquireRef(new Result::ResultBase(outputBuffer, bufferLength, dimensions));
+            results->Set(outputName.c_str(), result.Detach());
+            return IEStatusCode::OK;
         }
 
         ie_operand_descriptor ConvertTo(OperandDescriptor const* desc) {
@@ -132,7 +154,7 @@ namespace webnn_native { namespace ie {
 
     }  // namespace
 
-    Graph::Graph(Context* context) : GraphBase(context) {
+    Graph::Graph(Context* context) : GraphBase(context), mIeCompilation(nullptr) {
         // Create model.
         IEStatusCode code = IE(ie_create_model)(&mIeModel);
         if (code != IEStatusCode::OK) {
@@ -142,8 +164,12 @@ namespace webnn_native { namespace ie {
     }
 
     Graph::~Graph() {
-        IE(ie_model_free)(mIeModel);
-        IE(ie_compilation_free)(mIeCompilation);
+        if (mIeModel) {
+            IE(ie_model_free)(mIeModel);
+        }
+        if (mIeCompilation) {
+            IE(ie_compilation_free)(mIeCompilation);
+        }
     }
 
     MaybeError Graph::AddConstant(const op::Constant* constant) {
@@ -392,35 +418,31 @@ namespace webnn_native { namespace ie {
         COMPUTE_ERROR_CALLBACK(code, "IE compute model");
         // Get Data from nGraph with output.
         Ref<NamedResultsBase> results = AcquireRef(new NamedResultsBase());
-
-        size_t outputNumber = 0;
-        code = IE(ie_model_get_outputs_number)(mIeModel, &outputNumber);
-        COMPUTE_ERROR_CALLBACK(code, "Failing to get output number for IE.");
-        for (size_t i = 0; i < outputNumber; ++i) {
-            std::string outputId = GetOutputId(mIeModel, i);
-            void* outputBuffer;
-            size_t bufferLength;
-            IEStatusCode code = IE(ie_compilation_get_buffer)(mIeCompilation, outputId.data(),
-                                                              &outputBuffer, &bufferLength);
-            COMPUTE_ERROR_CALLBACK(code, "IE get buffer");
-            ie_dimensions_t ieDimensions;
-            code =
-                IE(ie_compilation_get_dimensions)(mIeCompilation, outputId.data(), &ieDimensions);
-            COMPUTE_ERROR_CALLBACK(code, "IE get dimensions");
-            std::vector<int32_t> dimensions(ieDimensions.dims,
-                                            ieDimensions.dims + ieDimensions.ranks);
-            code = IE(ie_compilation_free_dimensions)(&ieDimensions);
-            Ref<ResultBase> result =
-                AcquireRef(new Result::ResultBase(outputBuffer, bufferLength, dimensions));
-            std::string outputName = mOutputNameMap[outputId];
-            results->Set(outputName.c_str(), result.Detach());
-            if (outputs != nullptr) {
-                const Output* output = outputs->GetRecords().at(outputName);
-                ie_operand_t ieOperand;
-                ieOperand.name = const_cast<char*>(outputId.c_str());
-                IEStatusCode code = IE(ie_compilation_get_output)(mIeCompilation, &ieOperand,
-                                                                  output->buffer, output->size);
-                COMPUTE_ERROR_CALLBACK(code, "IE get output");
+        if (outputs != nullptr) {
+            for (auto namedOutput : outputs->GetRecords()) {
+                const Output* output = namedOutput.second;
+                // Get output id with friendly name.
+                std::string outputId = GetOutputId(mOutputNameMap, namedOutput.first);
+                if (outputId.empty()) {
+                    COMPUTE_ERROR_CALLBACK(IEStatusCode::GENERAL_ERROR, "Get output id");
+                }
+                // pre-allocated outputs.
+                if (output->buffer != nullptr && output->size != 0) {
+                    ie_operand_t ieOperand;
+                    ieOperand.name = const_cast<char*>(outputId.c_str());
+                    IEStatusCode code = IE(ie_compilation_get_output)(mIeCompilation, &ieOperand,
+                                                                      output->buffer, output->size);
+                    COMPUTE_ERROR_CALLBACK(code, "IE get output");
+                } else {
+                    // specified outputs.
+                    code = SetResult(mIeCompilation, outputId, namedOutput.first, results);
+                    COMPUTE_ERROR_CALLBACK(code, "IE get result");
+                }
+            }
+        } else {
+            for (auto& outputName : mOutputNameMap) {
+                code = SetResult(mIeCompilation, outputName.first, outputName.second, results);
+                COMPUTE_ERROR_CALLBACK(code, "IE get result");
             }
         }
         callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),

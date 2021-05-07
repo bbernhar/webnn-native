@@ -21,7 +21,7 @@
 namespace node { namespace op {
 
     struct BatchNorm {
-        static Napi::Value Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder);
+        static Napi::Value Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder);
     };
 
 }}  // namespace node::op

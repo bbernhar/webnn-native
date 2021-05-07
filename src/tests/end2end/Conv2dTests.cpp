@@ -109,8 +109,8 @@ TEST_F(Conv2dTests, Conv2dWithPaddingNhwIhwo) {
                         117., 81., 93., 144., 153., 162., 111., 72., 111., 117., 123., 84.}};
     utils::Conv2dOptions options;
     options.padding = {1, 1, 1, 1};
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
@@ -150,8 +150,8 @@ TEST_F(Conv2dTests, Conv2dWithoutPaddingNhwcIhwo) {
     Tensor filter = {{1, 3, 3, 1}, std::vector<float>(9, 1)};
     Tensor expected = {{1, 3, 3, 1}, {54., 63., 72., 99., 108., 117., 144., 153., 162.}};
     utils::Conv2dOptions options;
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
@@ -208,8 +208,8 @@ TEST_F(Conv2dTests, Conv2dWithStrides2AndPaddingNhwcIhwo) {
     utils::Conv2dOptions options;
     options.padding = {1, 1, 1, 1};
     options.strides = {2, 2};
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
@@ -260,8 +260,8 @@ TEST_F(Conv2dTests, Conv2dWithStrides2AndAsymetricPaddingNhwcIhwo) {
     utils::Conv2dOptions options;
     options.padding = {1, 2, 0, 1};
     options.strides = {2, 2};
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
@@ -287,8 +287,8 @@ TEST_F(Conv2dTests, FusedDepthwiseConv2dWithNhwcIhwo) {
     Tensor bias = {{4}, {{6000, 7000, 8000, 9000}}};
     Tensor expected = {{1, 1, 1, 4}, {6010, 7046, 11000, 9000}};
     utils::Conv2dOptions options;
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     options.groups = 4;
     CheckConv2d(input, filter, expected, options.AsPtr(), bias);
 }
@@ -355,8 +355,8 @@ TEST_F(Conv2dTests, FusedConv2dWithPaddingNhwcIhwo) {
                                       17., 0., 0., 44., 53., 62., 11., 0., 11., 17., 23., 0.}};
     utils::Conv2dOptions options;
     options.padding = {1, 1, 1, 1};
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr(), bias, FusedActivation::RELU);
 }
 
@@ -441,9 +441,9 @@ TEST_F(Conv2dTests, Conv2dWithAutoPadSameLowerNhwcIhwo) {
     Tensor expected = {{1, 2, 2, 1}, {10., 24., 51., 90.}};
     utils::Conv2dOptions options;
     options.strides = {2, 2};
-    options.autoPad = webnn::AutoPad::SameLower;
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.autoPad = ml::AutoPad::SameLower;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }
 
@@ -524,8 +524,8 @@ TEST_F(Conv2dTests, Conv2dWithAutoPadSameUpperNhwcIhwo) {
     Tensor expected = {{1, 2, 2, 1}, {45., 39., 66., 50.}};
     utils::Conv2dOptions options;
     options.strides = {2, 2};
-    options.autoPad = webnn::AutoPad::SameUpper;
-    options.inputLayout = webnn::InputOperandLayout::Nhwc;
-    options.filterLayout = webnn::FilterOperandLayout::Ihwo;
+    options.autoPad = ml::AutoPad::SameUpper;
+    options.inputLayout = ml::InputOperandLayout::Nhwc;
+    options.filterLayout = ml::FilterOperandLayout::Ihwo;
     CheckConv2d(input, filter, expected, options.AsPtr());
 }

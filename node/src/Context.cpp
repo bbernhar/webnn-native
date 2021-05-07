@@ -12,30 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ML.h"
-
 #include "Context.h"
 
-Napi::FunctionReference node::ML::constructor;
+#include <webnn/webnn_proc.h>
+#include <webnn_native/WebnnNative.h>
+
+#include "Utils.h"
+
+Napi::FunctionReference node::Context::constructor;
 
 namespace node {
 
-    ML::ML(const Napi::CallbackInfo& info) : Napi::ObjectWrap<ML>(info) {
+    Context::Context(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Context>(info) {
+        WebnnProcTable backendProcs = webnn_native::GetProcs();
+        webnnProcSetProcs(&backendProcs);
+        mImpl = ml::Context(webnn_native::CreateContext());
+        if (!mImpl) {
+            Napi::Error::New(info.Env(), "Failed to create Context").ThrowAsJavaScriptException();
+            return;
+        }
     }
 
-    Napi::Value ML::CreateContext(const Napi::CallbackInfo& info) {
-        Napi::Object context = Context::constructor.New({});
-        return context;
+    ml::Context Context::GetImpl() {
+        return mImpl;
     }
 
-    Napi::Object ML::Initialize(Napi::Env env, Napi::Object exports) {
+    Napi::Object Context::Initialize(Napi::Env env, Napi::Object exports) {
         Napi::HandleScope scope(env);
-        Napi::Function func = DefineClass(
-            env, "ml", {StaticMethod("createContext", &ML::CreateContext, napi_enumerable)});
+        Napi::Function func = DefineClass(env, "MLContext", {});
         constructor = Napi::Persistent(func);
         constructor.SuppressDestruct();
-        exports.Set("ml", func);
+        exports.Set("MLContext", func);
         return exports;
     }
-
 }  // namespace node

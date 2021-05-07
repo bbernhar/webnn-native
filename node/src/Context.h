@@ -12,30 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_NEURAL_NETWORK_CONTEXT_H_
-#define NODE_NEURAL_NETWORK_CONTEXT_H_
+#ifndef NODE_ML_CONTEXT_H_
+#define NODE_ML_CONTEXT_H_
 
 #include <napi.h>
 #include <webnn/webnn_cpp.h>
 
 namespace node {
 
-    class NeuralNetworkContext : public Napi::ObjectWrap<NeuralNetworkContext> {
+    class Context : public Napi::ObjectWrap<Context> {
       public:
         static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
         static Napi::FunctionReference constructor;
 
-        NeuralNetworkContext(const Napi::CallbackInfo& info);
-        ~NeuralNetworkContext() = default;
+        Context(const Napi::CallbackInfo& info);
+        ~Context() = default;
 
-        webnn::NeuralNetworkContext GetImpl();
+        ml::Context GetImpl();
 
       private:
-        Napi::Value CreateModelBuilder(const Napi::CallbackInfo& info);
-
-        webnn::NeuralNetworkContext mImpl;
+        ml::Context mImpl;
     };
 
 }  // namespace node
 
-#endif  // NODE_NEURAL_NETWORK_CONTEXT_H_
+#endif  // NODE_ML_CONTEXT_H_

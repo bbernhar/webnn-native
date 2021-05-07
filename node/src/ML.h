@@ -28,7 +28,7 @@ namespace node {
         ~ML() = default;
 
       private:
-        static Napi::Value GetNeuralNetworkContext(const Napi::CallbackInfo& info);
+        static Napi::Value CreateContext(const Napi::CallbackInfo& info);
     };
 
 }  // namespace node

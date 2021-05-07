@@ -20,13 +20,13 @@
 
 namespace node {
 
-    class ModelBuilder : public Napi::ObjectWrap<ModelBuilder> {
+    class GraphBuilder : public Napi::ObjectWrap<GraphBuilder> {
       public:
         static Napi::Object Initialize(Napi::Env env, Napi::Object exports);
         static Napi::FunctionReference constructor;
 
-        explicit ModelBuilder(const Napi::CallbackInfo& info);
-        ~ModelBuilder() = default;
+        explicit GraphBuilder(const Napi::CallbackInfo& info);
+        ~GraphBuilder() = default;
 
       private:
         Napi::Value Constant(const Napi::CallbackInfo& info);
@@ -46,9 +46,9 @@ namespace node {
         Napi::Value Reshape(const Napi::CallbackInfo& info);
         Napi::Value Softmax(const Napi::CallbackInfo& info);
         Napi::Value Transpose(const Napi::CallbackInfo& info);
-        Napi::Value CreateModel(const Napi::CallbackInfo& info);
+        Napi::Value Build(const Napi::CallbackInfo& info);
 
-        webnn::ModelBuilder mImpl;
+        ml::GraphBuilder mImpl;
     };
 
 }  // namespace node

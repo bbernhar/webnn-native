@@ -19,15 +19,15 @@
 
 namespace node { namespace op {
 
-    Napi::Value Clamp::Build(const Napi::CallbackInfo& info, webnn::ModelBuilder builder) {
+    Napi::Value Clamp::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
         // Operand clamp(Operand x, optional ClampOptions options = {});
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
                           "The number of arguments is invalid.");
 
-        webnn::Operand input;
+        ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        webnn::Operand clamp;
+        ml::Operand clamp;
         if (info.Length() == 1) {
             clamp = builder.Clamp(input);
         } else {
@@ -35,7 +35,7 @@ namespace node { namespace op {
             //   Operand minValue;
             //   Operand maxValue;
             // };
-            webnn::ClampOptions options;
+            ml::ClampOptions options;
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "minValue")) {

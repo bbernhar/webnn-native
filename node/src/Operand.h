@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NODE_OPERAND_H_
-#define NODE_OPERAND_H_
+#ifndef NODE_ML_OPERAND_H_
+#define NODE_ML_OPERAND_H_
 
 #include <napi.h>
 #include <webnn/webnn_cpp.h>
@@ -30,13 +30,13 @@ namespace node {
         explicit Operand(const Napi::CallbackInfo& info);
         ~Operand() = default;
 
-        webnn::Operand GetImpl() const;
-        void SetImpl(const webnn::Operand& operand);
+        ml::Operand GetImpl() const;
+        void SetImpl(const ml::Operand& operand);
 
       private:
-        webnn::Operand mImpl;
+        ml::Operand mImpl;
     };
 
 }  // namespace node
 
-#endif  // NODE_OPERAND_H_
+#endif  // NODE_ML_OPERAND_H_
