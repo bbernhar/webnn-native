@@ -63,13 +63,13 @@ namespace node {
                          Napi::Promise::Deferred& deferred,
                          ml::GraphBuilder builder,
                          ml::NamedOperands namedOperands,
-                         const std::vector<std::string>& outputNames)
+                         std::vector<std::string> outputNames)
             : Napi::AsyncWorker(env),
               mEnv(env),
               mDeferred(deferred),
               mBuilder(builder),
-              mNamedOperands(namedOperands),
-              mOutputNames(outputNames) {
+              mNamedOperands(std::move(namedOperands)),
+              mOutputNames(std::move(outputNames)) {
         }
 
         ~BuildGraphWorker() = default;
@@ -199,7 +199,7 @@ namespace node {
         WEBNN_NODE_ASSERT(GetNamedOperands(info[0], namedOperands, names),
                           "The outputs parameter is invalid.");
         BuildGraphWorker* worker =
-            new BuildGraphWorker(env, deferred, mImpl, namedOperands, std::move(names));
+            new BuildGraphWorker(env, deferred, mImpl, std::move(namedOperands), std::move(names));
         worker->Queue();
         return deferred.Promise();
     }

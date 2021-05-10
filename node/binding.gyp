@@ -1,10 +1,11 @@
 {
   'variables': {
     'WEBNN_NATIVE_DIR': '<@(module_root_dir)/../',
+    'WEBNN_NATIVE_LIB_PATH': '<@(module_root_dir)/../<(webnn_native_lib_path)',
   },
   'conditions': [
     [ 'OS=="win"',  {
-      'variables': { 
+      'variables': {
         'WEBNN_NATIVE_LIBRARY': '-lwebnn_native.dll.lib',
         'WEBNN_PROC_LIBRARY': '-lwebnn_proc.dll.lib',
       }}
@@ -22,6 +23,7 @@
       'sources': [
         "<!@(node -p \"require('fs').readdirSync('./src').map(f=>'src/'+f).join(' ')\")",
         "<!@(node -p \"require('fs').readdirSync('./src/ops').map(f=>'src/ops/'+f).join(' ')\")",
+        # webnn_cpp.cpp must be relative path.
         '../<(webnn_native_lib_path)/gen/src/webnn/webnn_cpp.cpp',
       ],
       'cflags!': [ '-fno-exceptions', '-fno-rtti'],
@@ -51,10 +53,10 @@
         '<!@(node -p "require(\'node-addon-api\').include")',
         '<(module_root_dir)/src',
         '<(WEBNN_NATIVE_DIR)/src/include',
-        '../<(webnn_native_lib_path)/gen/src/include',
+        '<(WEBNN_NATIVE_LIB_PATH)/gen/src/include',
       ],
       'library_dirs' : [
-        '../<(webnn_native_lib_path)',
+        '<(WEBNN_NATIVE_LIB_PATH)',
       ],
       'libraries' : [
         '<(WEBNN_NATIVE_LIBRARY)',
