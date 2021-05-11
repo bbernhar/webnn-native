@@ -172,7 +172,7 @@ const ml::Operand MobileNetV2::BuildLinearBottleneck(const ml::GraphBuilder& bui
                                                      utils::Conv2dOptions* dwiseOptions,
                                                      bool shouldAdd) {
     utils::Conv2dOptions convOptions;
-    convOptions.autoPad = ml::AutoPad::SameLower;
+    convOptions.autoPad = ml::AutoPad::SameUpper;
     convOptions.inputLayout = ml::InputOperandLayout::Nhwc;
     convOptions.filterLayout = ml::FilterOperandLayout::Ohwi;
 
@@ -180,7 +180,7 @@ const ml::Operand MobileNetV2::BuildLinearBottleneck(const ml::GraphBuilder& bui
 
     const ml::Operand conv1x1 = BuildConv(builder, input, convIndexes[0], true, &convOptions,
                                           biasPrefix + "_expand_Conv2D");
-    dwiseOptions->autoPad = ml::AutoPad::SameLower;
+    dwiseOptions->autoPad = ml::AutoPad::SameUpper;
     dwiseOptions->inputLayout = ml::InputOperandLayout::Nhwc;
     // dwiseOptions->filterLayout = ml::FilterOperandLayout::Ihwo;
     const ml::Operand conv3x3 = BuildConv(builder, conv1x1, convIndexes[1], true, dwiseOptions,
@@ -262,21 +262,21 @@ bool MobileNetV2::LoadNHWC(const std::string& weightsPath, bool softmax) {
 
     utils::Conv2dOptions conv0Options;
     conv0Options.strides = {2, 2};
-    conv0Options.autoPad = ml::AutoPad::SameLower;
+    conv0Options.autoPad = ml::AutoPad::SameUpper;
     conv0Options.inputLayout = ml::InputOperandLayout::Nhwc;
     conv0Options.filterLayout = ml::FilterOperandLayout::Ohwi;
     const ml::Operand conv0 = BuildConv(builder, input, 90, true, &conv0Options, "Conv_Conv2D");
 
     utils::Conv2dOptions conv1Options;
     conv1Options.groups = 32;
-    conv1Options.autoPad = ml::AutoPad::SameLower;
+    conv1Options.autoPad = ml::AutoPad::SameUpper;
     conv1Options.inputLayout = ml::InputOperandLayout::Nhwc;
     // conv1Options.filterLayout = ml::FilterOperandLayout::Ihwo;
     const ml::Operand conv1 =
         BuildConv(builder, conv0, 238, true, &conv1Options, "expanded_conv_depthwise_depthwise");
 
     utils::Conv2dOptions conv2Options;
-    conv2Options.autoPad = ml::AutoPad::SameLower;
+    conv2Options.autoPad = ml::AutoPad::SameUpper;
     conv2Options.inputLayout = ml::InputOperandLayout::Nhwc;
     conv2Options.filterLayout = ml::FilterOperandLayout::Ohwi;
     const ml::Operand conv2 =
@@ -361,7 +361,7 @@ bool MobileNetV2::LoadNHWC(const std::string& weightsPath, bool softmax) {
                                                            16, &dwiseConv15Options, false);
 
     utils::Conv2dOptions conv3Options;
-    conv3Options.autoPad = ml::AutoPad::SameLower;
+    conv3Options.autoPad = ml::AutoPad::SameUpper;
     conv3Options.inputLayout = ml::InputOperandLayout::Nhwc;
     conv3Options.filterLayout = ml::FilterOperandLayout::Ohwi;
     const ml::Operand conv3 =
