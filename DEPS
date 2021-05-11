@@ -15,7 +15,7 @@ deps = {
     'url': '{github_git}/nothings/stb@b42009b3b9d4ca35bc703f5310eedc74f584be58'
   },
   'node/third_party/webnn-polyfill': {
-    'url': '{github_git}/webmachinelearning/webnn-polyfill.git@cd9cba8bf3b4ee0a5d98a44e40108bbd79f6bc17'
+    'url': '{github_git}/webmachinelearning/webnn-polyfill.git@408c75329b942777aab01f236a1cf8a8e9b40270'
   },
   'third_party/dawn': {
     'url': '{dawn_git}/dawn.git@bf1c0cf52377b4db2bf3a433dc5056620aad7cdd'
