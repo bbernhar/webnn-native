@@ -1,0 +1,16 @@
+{
+  "file": [
+    "LeNet",
+    "MobileNetV2",
+    "SqueezeNet",
+    "libdnnl.so.2",
+    "libdnnl.so.2.1",
+    "webnn_unittests",
+    "webnn_end2end_tests",
+    "*.so"
+  ],
+  "directory": [
+    "examples",
+    "node"
+  ]
+}
