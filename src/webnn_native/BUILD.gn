@@ -71,6 +71,21 @@ source_set("webnn_native_headers") {
   ]
 }
 
+if (webnn_enable_onednn) {
+  dnnl_version = "2.1.0"
+
+  if (is_win) {
+    dnnl_os = "win"
+    dnnl_omp = "vcomp"
+    dnnl_libs = [ "dnnl.lib" ]
+  } else if (is_linux) {
+    dnnl_os = "lnx"
+    dnnl_omp = "gomp"
+    dnnl_libs = [ "dnnl" ]
+  }
+  dnnl_path = "//third_party/dnnl_${dnnl_os}_${dnnl_version}_cpu_${dnnl_omp}"
+}
+
 # The meat of the compilation for webnn_native so that we can cheaply have
 # shared_library / static_library versions of it. It compiles all the files
 # except those that define exported symbols.
@@ -114,14 +129,24 @@ source_set("webnn_native_sources") {
   ]
 
   sources += [
+    "ops/BatchNorm.cpp",
+    "ops/BatchNorm.h",
     "ops/Binary.cpp",
     "ops/Binary.h",
+    "ops/Clamp.cpp",
+    "ops/Clamp.h",
+    "ops/Concat.cpp",
+    "ops/Concat.h",
     "ops/Constant.cpp",
     "ops/Constant.h",
     "ops/Conv2d.cpp",
     "ops/Conv2d.h",
+    "ops/Gemm.cpp",
+    "ops/Gemm.h",
     "ops/Input.cpp",
     "ops/Input.h",
+    "ops/LeakyRelu.cpp",
+    "ops/LeakyRelu.h",
     "ops/Pool2d.cpp",
     "ops/Pool2d.h",
     "ops/Reshape.cpp",
@@ -200,6 +225,58 @@ source_set("webnn_native_sources") {
       "-Wno-macro-redefined",
     ]
   }
+
+  if (webnn_enable_onednn) {
+    sources += [
+      "onednn/ContextDNNL.cpp",
+      "onednn/ContextDNNL.h",
+      "onednn/GraphDNNL.cpp",
+      "onednn/GraphDNNL.h",
+    ]
+
+    include_dirs = [ "${dnnl_path}/include" ]
+    lib_dirs = [ "${dnnl_path}/lib" ]
+    libs = dnnl_libs
+  }
+
+  if (webnn_enable_xnnpack) {
+    sources += [
+      "xnnpack/ContextXNN.cpp",
+      "xnnpack/ContextXNN.h",
+      "xnnpack/GraphXNN.cpp",
+      "xnnpack/GraphXNN.h",
+    ]
+
+    include_dirs = [
+      "//third_party/XNNPACK/include",
+      "//third_party/XNNPACK/build/local/pthreadpool-source/include",
+    ]
+
+    libprefix = ""
+    libext = ""
+    libfolder = ""
+
+    if (is_win) {
+      libext = "lib"
+      if (is_debug) {
+        libfolder = "Debug"
+      } else {
+        libfolder = "Release"
+      }
+    }
+
+    if (is_linux) {
+      libprefix = "lib"
+      libext = "a"
+    }
+
+    libs = [
+      "//third_party/XNNPACK/build/local/${libfolder}/${libprefix}XNNPACK.${libext}",
+      "//third_party/XNNPACK/build/local/clog/${libfolder}/${libprefix}clog.${libext}",
+      "//third_party/XNNPACK/build/local/cpuinfo/${libfolder}/${libprefix}cpuinfo.${libext}",
+      "//third_party/XNNPACK/build/local/pthreadpool/${libfolder}/${libprefix}pthreadpool.${libext}",
+    ]
+  }
 }
 
 # The static and shared libraries for webnn_native. Most of the files are
@@ -246,6 +323,24 @@ if (webnn_enable_dml) {
   dml_dll_path = "//third_party/microsoft.ai.directml.1.4.1/bin/${os_folder}"
   copy("copy_dml_dll") {
     sources = [ "${dml_dll_path}/${dml_dll}" ]
+    outputs = [ "$root_out_dir/{{source_file_part}}" ]
+  }
+}
+
+if (webnn_enable_onednn) {
+  if (is_win) {
+    dnnl_dll_path = "${dnnl_path}/bin/"
+    dnnl_dlls = [ "${dnnl_dll_path}/dnnl.dll" ]
+  } else if (is_linux) {
+    dnnl_dll_path = "${dnnl_path}/lib/"
+    dnnl_dlls = [
+      "${dnnl_dll_path}/libdnnl.so",
+      "${dnnl_dll_path}/libdnnl.so.2",
+      "${dnnl_dll_path}/libdnnl.so.2.1",
+    ]
+  }
+  copy("copy_dnnl_dll") {
+    sources = dnnl_dlls
     outputs = [ "$root_out_dir/{{source_file_part}}" ]
   }
 }

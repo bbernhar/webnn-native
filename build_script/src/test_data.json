@@ -1,0 +1,11 @@
+{
+  "file": [
+    "examples/LeNet/lenet.bin"
+  ],
+  "directory": [
+    "examples/images",
+    "examples/labels",
+    "node/third_party/webnn-polyfill/test/models/*/weights",
+    "node/third_party/webnn-polyfill/test/models/*/test_data_set_*"
+  ]
+}

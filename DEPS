@@ -11,12 +11,21 @@ vars = {
 }
 
 deps = {
+  'third_party/stb': {
+    'url': '{github_git}/nothings/stb@b42009b3b9d4ca35bc703f5310eedc74f584be58'
+  },
+  'node/third_party/webnn-polyfill': {
+    'url': '{github_git}/webmachinelearning/webnn-polyfill.git@408c75329b942777aab01f236a1cf8a8e9b40270'
+  },
   'third_party/dawn': {
     'url': '{dawn_git}/dawn.git@bf1c0cf52377b4db2bf3a433dc5056620aad7cdd'
   },
   'third_party/DirectML': {
     'url': '{github_git}/microsoft/DirectML.git@e1b29b20a21bd2fb669a0c774f9870f8e9731da6',
     'condition': 'checkout_win',
+  },
+  'third_party/XNNPACK': {
+    'url': '{github_git}/google/XNNPACK.git@60fc61373f21f0ad3164cc719de464f4b787dc04'
   },
 
   # Dependencies required to use GN/Clang in standalone
@@ -163,6 +172,20 @@ hooks = [
     'pattern': '.',
     'condition': 'checkout_win',
     'action': ['python3', 'src/webnn_native/dml/deps/script/download_dml.py'],
+  },
+  {
+    # Download the oneDNN package for Windows.
+    'name': 'download_onednn',
+    'pattern': '.',
+    'condition': 'checkout_win',
+    'action': ['python3', 'scripts/download_onednn.py', 'win'],
+  },
+  {
+    # Download the oneDNN package for Linux.
+    'name': 'download_onednn',
+    'pattern': '.',
+    'condition': 'checkout_linux',
+    'action': ['python3', 'scripts/download_onednn.py', 'linux'],
   },
 ]
 

@@ -67,8 +67,8 @@ namespace webnn_native { namespace op {
         }
     }
 
-    MaybeError Pool2d::AddToGraph(GraphBase* model) const {
-        return model->AddPool2d(this);
+    MaybeError Pool2d::AddToGraph(GraphBase* graph) const {
+        return graph->AddPool2d(this);
     }
 
     Pool2dOptions const* Pool2d::GetOptions() const {
@@ -80,10 +80,12 @@ namespace webnn_native { namespace op {
     }
 
     MaybeError Pool2d::ValidateAndInferTypes() {
-        auto input = mInputs[0];
-        if (input->IsError()) {
-            return DAWN_VALIDATION_ERROR("Argument input is invalid.");
+        MaybeError maybeError = OperandBase::ValidateAndInferTypes();
+        if (maybeError.IsError()) {
+            return maybeError;
         }
+
+        auto input = mInputs[0];
         // The input 4-D tensor
         if (input->Rank() != 4) {
             return DAWN_VALIDATION_ERROR("Argument input is not a 4D tensor.");
@@ -104,9 +106,6 @@ namespace webnn_native { namespace op {
         if (mOptions.dilationsCount != 2) {
             return DAWN_VALIDATION_ERROR("dilationsCount is incorrect.");
         }
-
-        mType = input->Type();
-        mRank = 4;
 
         return {};
     }

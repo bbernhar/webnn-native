@@ -25,10 +25,15 @@
 #include "webnn_native/Context.h"
 #include "webnn_native/Graph.h"
 #include "webnn_native/Operand.h"
+#include "webnn_native/ops/BatchNorm.h"
 #include "webnn_native/ops/Binary.h"
+#include "webnn_native/ops/Clamp.h"
+#include "webnn_native/ops/Concat.h"
 #include "webnn_native/ops/Constant.h"
 #include "webnn_native/ops/Conv2d.h"
+#include "webnn_native/ops/Gemm.h"
 #include "webnn_native/ops/Input.h"
+#include "webnn_native/ops/LeakyRelu.h"
 #include "webnn_native/ops/Pool2d.h"
 #include "webnn_native/ops/Reshape.h"
 #include "webnn_native/ops/Transpose.h"
@@ -76,6 +81,10 @@ namespace webnn_native {
         DAWN_VALIDATE_AND_INFER_TYPES(new op::Binary(this, op::BinaryOpType::kMul, a, b));
     }
 
+    OperandBase* GraphBuilderBase::Sub(OperandBase* a, OperandBase* b) {
+        DAWN_VALIDATE_AND_INFER_TYPES(new op::Binary(this, op::BinaryOpType::kSub, a, b));
+    }
+
     OperandBase* GraphBuilderBase::Conv2d(OperandBase* input,
                                           OperandBase* filter,
                                           Conv2dOptions const* options) {
@@ -108,6 +117,38 @@ namespace webnn_native {
 
     OperandBase* GraphBuilderBase::Transpose(OperandBase* input, TransposeOptions const* options) {
         DAWN_VALIDATE_AND_INFER_TYPES(new op::Transpose(this, input, options));
+    }
+
+    OperandBase* GraphBuilderBase::LeakyRelu(OperandBase* input, LeakyReluOptions const* options) {
+        DAWN_VALIDATE_AND_INFER_TYPES(new op::LeakyRelu(this, input, options));
+    }
+
+    OperandBase* GraphBuilderBase::Concat(uint32_t inputsCount,
+                                          OperandBase* const* inputs,
+                                          uint32_t axis) {
+        std::vector<Ref<OperandBase>> operandInputs;
+        operandInputs.reserve(inputsCount);
+        for (uint32_t i = 0; i < inputsCount; ++i) {
+            operandInputs.push_back(inputs[i]);
+        }
+        DAWN_VALIDATE_AND_INFER_TYPES(new op::Concat(this, std::move(operandInputs), axis));
+    }
+
+    OperandBase* GraphBuilderBase::Gemm(OperandBase* a,
+                                        OperandBase* b,
+                                        GemmOptions const* options) {
+        DAWN_VALIDATE_AND_INFER_TYPES(new op::Gemm(this, a, b, options));
+    }
+
+    OperandBase* GraphBuilderBase::Clamp(OperandBase* input, ClampOptions const* options) {
+        DAWN_VALIDATE_AND_INFER_TYPES(new op::Clamp(this, input, options));
+    }
+
+    OperandBase* GraphBuilderBase::BatchNorm(OperandBase* input,
+                                             OperandBase* mean,
+                                             OperandBase* variance,
+                                             BatchNormOptions const* options) {
+        DAWN_VALIDATE_AND_INFER_TYPES(new op::BatchNorm(this, input, mean, variance, options));
     }
 
     void GraphBuilderBase::Build(NamedOperandsBase const* namedOperands,

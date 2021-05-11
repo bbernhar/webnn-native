@@ -38,6 +38,7 @@ namespace webnn_native { namespace null {
     }
 
     void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+        delgate(MLBuildGraphStatus_Error, nullptr);
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,
@@ -79,6 +80,26 @@ namespace webnn_native { namespace null {
     }
 
     MaybeError Graph::AddUnary(const op::Unary* unary) {
+        return {};
+    }
+
+    MaybeError Graph::AddBatchNorm(const op::BatchNorm* batchNorm) {
+        return {};
+    }
+
+    MaybeError Graph::AddLeakyRelu(const op::LeakyRelu* unary) {
+        return {};
+    }
+
+    MaybeError Graph::AddConcat(const op::Concat* concat) {
+        return {};
+    }
+
+    MaybeError Graph::AddGemm(const op::Gemm* gemm) {
+        return {};
+    }
+
+    MaybeError Graph::AddClamp(const op::Clamp* clamp) {
         return {};
     }
 

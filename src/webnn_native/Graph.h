@@ -29,12 +29,17 @@ namespace webnn_native {
     namespace op {
         class Constant;
         class Input;
+        class BatchNorm;
         class Binary;
         class Conv2d;
         class Pool2d;
         class Reshape;
         class Transpose;
         class Unary;
+        class LeakyRelu;
+        class Concat;
+        class Gemm;
+        class Clamp;
     }  // namespace op
 
     class GraphBase : public ObjectBase {
@@ -51,12 +56,17 @@ namespace webnn_native {
         virtual MaybeError AddConstant(const op::Constant* constant);
         virtual MaybeError AddInput(const op::Input* input);
         virtual MaybeError AddOutput(const std::string& name, const OperandBase* output);
+        virtual MaybeError AddBatchNorm(const op::BatchNorm* batchNorm);
         virtual MaybeError AddBinary(const op::Binary* binary);
         virtual MaybeError AddConv2d(const op::Conv2d* conv2d);
         virtual MaybeError AddPool2d(const op::Pool2d* pool2d);
         virtual MaybeError AddReshape(const op::Reshape* relu);
         virtual MaybeError AddTranspose(const op::Transpose* transpose);
         virtual MaybeError AddUnary(const op::Unary* unary);
+        virtual MaybeError AddLeakyRelu(const op::LeakyRelu* leakyRelu);
+        virtual MaybeError AddConcat(const op::Concat* concat);
+        virtual MaybeError AddGemm(const op::Gemm* gemm);
+        virtual MaybeError AddClamp(const op::Clamp* Clamp);
         virtual MaybeError Finish();
         virtual void Compile(BuildGraphCallbackDelgate delgate);
 
