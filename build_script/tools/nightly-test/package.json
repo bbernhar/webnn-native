@@ -14,9 +14,9 @@
     "emailjs": "^3.4.0",
     "eslint": "^7.23.0",
     "eslint-config-google": "^0.14.0",
-    "extract-zip": "^2.0.1",
     "fast-csv": "^4.3.6",
     "fs-extra": "^9.1.0",
+    "tar": "^6.1.0",
     "winston": "^3.3.3"
   }
 }

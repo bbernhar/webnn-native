@@ -11,7 +11,7 @@ const url = require('url');
 class TesterConfig {
   /**
    * Create a testerConfig.
-   * @param {string} configFile - The config json file.
+   * @param {String} configFile - The config json file.
    */
   constructor(configFile) {
     this.configFile_ = configFile;
@@ -99,7 +99,7 @@ class TesterConfig {
 
   /**
    * Get target commit Id.
-   * @return {string} target commit Id.
+   * @return {String} target commit Id.
    */
   get targetCommitId() {
     return this.targetCommitId_;
@@ -122,7 +122,7 @@ class TesterConfig {
   }
 
   /**
-   * @return {string} results directory.
+   * @return {String} results directory.
    */
   get resultsDir() {
     return this.resultsDir_;
@@ -136,21 +136,21 @@ class TesterConfig {
   }
 
   /**
-   * @return {string} log file.
+   * @return {String} log file.
    */
   get logFile() {
     return this.logFile_;
   }
 
   /**
-   * @return {string} user and host of remote report server.
+   * @return {String} user and host of remote report server.
    */
   get userHost() {
     return this.userHost_;
   }
 
   /**
-   * @return {string} directory of remote report server.
+   * @return {String} directory of remote report server.
    */
   get remoteDir() {
     return this.remoteDir_;
@@ -158,7 +158,7 @@ class TesterConfig {
 
   /**
    * Get latest commit Id.
-   * @return {string} latest commit Id.
+   * @return {String} latest commit Id.
    */
   async getLatestCommitId() {
     const getHtmlElements = async function(buildUrl) {
@@ -212,13 +212,14 @@ class TesterConfig {
 
   /**
    * Get build url.
-   * @param {string} backend - value: 'null' / 'openvino' / 'dml'.
-   * @return {string} build url.
+   * @param {String} backend - value: 'null', 'openvino', 'dml', 'onednn',
+   *                                  'xnnpack'.
+   * @return {String} build url.
    */
   getBuildUrl(backend) {
     return [this.buildUrl_, this.targetCommitId_,
       `${this.device_.os}_${this.device_.cpu}_${backend}`,
-      `webnn-${this.device_.os}-${this.device_.cpu}-${backend}.zip`].join('/');
+      `webnn-${this.device_.os}-${this.device_.cpu}-${backend}.tgz`].join('/');
   }
 }
 

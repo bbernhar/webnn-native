@@ -2,7 +2,7 @@
 
 const crypto = require('crypto');
 const csv = require('fast-csv');
-const extract = require('extract-zip');
+const tar = require('tar');
 const fs = require('fs-extra');
 const http = require('http');
 const {spawn} = require('child_process');
@@ -12,8 +12,8 @@ const utils = {
   /**
    * Download.
    * @param {object} logger - The logger.
-   * @param {src} src - The download file url.
-   * @param {dist} dist - The save file.
+   * @param {String} src - The download file url.
+   * @param {String} dist - The save file.
    * @return {object} promise.
    */
   download(logger, src, dist) {
@@ -43,9 +43,9 @@ const utils = {
   /**
    * Check MD5.
    * @param {object} logger - The logger.
-   * @param {string} buildFile - The checking build file.
-   * @param {string} buildMD5File - The file has MD5 value for checking.
-   * @return {string} check status string, value: 'SUCCEEDED' / 'FAILED'
+   * @param {String} buildFile - The checking build file.
+   * @param {String} buildMD5File - The file has MD5 value for checking.
+   * @return {String} check status string, value: 'SUCCEEDED' / 'FAILED'
    */
   checkMD5(logger, buildFile, buildMD5File) {
     const value = crypto.createHash('md5')
@@ -57,17 +57,21 @@ const utils = {
     return status;
   },
 
-  async extractBuild(logger, buildFile, unzipPath) {
+  extractBuild(logger, buildFile, unzipPath) {
     logger.info(`Extract ${buildFile} to ${unzipPath} directory`);
-    await extract(buildFile, {dir: unzipPath});
+    tar.extract({
+      file: buildFile,
+      cwd: unzipPath,
+      sync: true,
+    });
   },
 
   /**
    * Execute command.
    * @param {object} logger - The logger.
-   * @param {string} cmd - The command string.
+   * @param {String} cmd - The command string.
    * @param {array} args - The arguments array.
-   * @param {string} cwd - The path string.
+   * @param {String} cwd - The path string.
    * @param {object} result - The return value.
    * @return {object} child_process.spawn promise.
    */
@@ -99,10 +103,10 @@ const utils = {
   /**
    * Save results to CSV file.
    * @param {object} logger - The logger.
-   * @param {string} csvFile - The save CSV file.
-   * @param {string} resultsStr - The test results string.
-   * @param {string} component - The component name.
-   * @param {string} example - The example name.
+   * @param {String} csvFile - The save CSV file.
+   * @param {String} resultsStr - The test results string.
+   * @param {String} component - The component name.
+   * @param {String} example - The example name.
    */
   async saveResultsCSV(logger, csvFile, resultsStr, component, example) {
     function readyResultsData(dataStr, component, example) {
@@ -163,10 +167,10 @@ const utils = {
   /**
    * Upload results file.
    * @param {object} logger - The logger.
-   * @param {string} result - The report csv file or log file.
-   * @param {string} remoteUserHost - The remote user host.
-   * @param {string} remoteDir - The remote directory.
-   * @param {string} cwd - The path string.
+   * @param {String} result - The report csv file or log file.
+   * @param {String} remoteUserHost - The remote user host.
+   * @param {String} remoteDir - The remote directory.
+   * @param {String} cwd - The path string.
    */
   async uploadResults(logger, result, remoteUserHost, remoteDir, cwd) {
     await this.childCommand(logger, 'ssh',
