@@ -21,26 +21,26 @@ class SqueezeNetNhwcTests : public WebnnTest {
         const ml::GraphBuilder builder = ml::CreateGraphBuilder(GetContext());
         SqueezeNet squeezenet(false);
         const std::string nhwcPath =
-            "node/third_party/webnn-polyfill/test/models/squeezenet1.0_nhwc/";
+            "node/third_party/webnn-polyfill/test-data/models/squeezenet1.0_nhwc/";
         squeezenet.LoadNHWC(nhwcPath + "weights/");
-        const cnpy::NpyArray inputNpy = cnpy::npy_load(nhwcPath + inputFile);
+        const cnpy::NpyArray inputNpy = cnpy::npy_load(nhwcPath + "test_data_set/" + inputFile);
         const std::vector<float> inputData = inputNpy.as_vec<float>();
         const ml::Result result =
             squeezenet.Compute(inputData.data(), inputData.size() * sizeof(float));
         EXPECT_TRUE(utils::CheckShape(result, {1, 1001}));
-        const cnpy::NpyArray outputNpy = cnpy::npy_load(nhwcPath + expectedFile);
+        const cnpy::NpyArray outputNpy = cnpy::npy_load(nhwcPath + "test_data_set/" + expectedFile);
         EXPECT_TRUE(utils::CheckValue(result, outputNpy.as_vec<float>()));
     }
 };
 
 TEST_F(SqueezeNetNhwcTests, NhwcTest0) {
-    TestSqueezeNetNhwc("test_data_set_0/input_0.npy", "test_data_set_0/output_0.npy");
+    TestSqueezeNetNhwc("0/input_0.npy", "0/output_0.npy");
 }
 
 TEST_F(SqueezeNetNhwcTests, NhwcTest1) {
-    TestSqueezeNetNhwc("test_data_set_1/input_0.npy", "test_data_set_1/output_0.npy");
+    TestSqueezeNetNhwc("1/input_0.npy", "1/output_0.npy");
 }
 
 TEST_F(SqueezeNetNhwcTests, NhwcTest2) {
-    TestSqueezeNetNhwc("test_data_set_2/input_0.npy", "test_data_set_2/output_0.npy");
+    TestSqueezeNetNhwc("2/input_0.npy", "2/output_0.npy");
 }

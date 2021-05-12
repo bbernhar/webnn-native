@@ -2,7 +2,7 @@
 
 This example showcases the SqueezeNet-based image classification by WebNN API.
 
-This example leverages the network topology of [SqueezeNet 1.0](https://storage.googleapis.com/download.tensorflow.org/models/tflite/model_zoo/upload_20180427/squeezenet_2018_04_27.tgz) from TFLite models with "nhwc" layout and [SqueezeNet 1.1](https://github.com/onnx/models/tree/master/vision/classification/squeezenet) from ONNX models with "nchw" layout. It loads an image as the input by [stb](https://github.com/nothings/stb) library, and loads weights/biases from .npy [files](https://github.com/webmachinelearning/webnn-polyfill/tree/master/test/models) by [cnpy](https://github.com/rogersce/cnpy) library.
+This example leverages the network topology of [SqueezeNet 1.0](https://storage.googleapis.com/download.tensorflow.org/models/tflite/model_zoo/upload_20180427/squeezenet_2018_04_27.tgz) from TFLite models with "nhwc" layout and [SqueezeNet 1.1](https://github.com/onnx/models/tree/master/vision/classification/squeezenet) from ONNX models with "nchw" layout. It loads an image as the input by [stb](https://github.com/nothings/stb) library, and loads squeezenet1.0_nhwc weights/biases from .npy [files](https://github.com/webmachinelearning/test-data/tree/main/models/squeezenet1.0_nhwc/weights) or squeezenet1.1_nchw weights/biases from .npy [files](https://github.com/webmachinelearning/test-data/tree/main/models/squeezenet1.1_nchw/weights) by [cnpy](https://github.com/rogersce/cnpy) library.
 
 ## Usage
 
@@ -21,7 +21,7 @@ Options:
 ## Example Output
 
 ```sh
-> out/Release/SqueezeNet -i examples/images/test.jpg -l nchw -m node/third_party/webnn-polyfill/test/models/squeezenet1.1_nchw/weights/
+> out/Release/SqueezeNet -i examples/images/test.jpg -l nchw -m node/third_party/webnn-polyfill/test-data/models/squeezenet1.1_nchw/weights/
 Info: Compilation Time: 63.7251 ms
 Info: Execution Time: 1.74562 ms
 
@@ -35,7 +35,7 @@ Info: Done.
 ```
 
 ```sh
-> out/Release/SqueezeNet -i examples/images/test.jpg -l nhwc -m node/third_party/webnn-polyfill/test/models/squeezenet1.0_nhwc/weights/
+> out/Release/SqueezeNet -i examples/images/test.jpg -l nhwc -m node/third_party/webnn-polyfill/test-data/models/squeezenet1.0_nhwc/weights/
 Info: Compilation Time: 78.7005 ms
 Info: Execution Time: 6.65379 ms
 

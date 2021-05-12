@@ -44,7 +44,8 @@ const ml::Operand SqueezeNet::BuildConv(const ml::GraphBuilder& builder,
     std::string suffix = mNchw ? "_weight.npy" : "_kernel.npy";
     const std::string weightsPath = mDataPath + name + suffix;
     const ml::Operand convWeights = BuildConstantFromNpy(builder, weightsPath);
-    const std::string biasPath = mDataPath + name + "_bias.npy";
+    std::string biasSuffix = mNchw ? "_bias.npy" : "_Conv2D_bias.npy";
+    const std::string biasPath = mDataPath + name + biasSuffix;
     const ml::Operand convBias = BuildConstantFromNpy(builder, biasPath);
     std::vector<int32_t> newShape;
     mNchw ? newShape = {1, -1, 1, 1} : newShape = {1, 1, 1, -1};
@@ -63,7 +64,7 @@ const ml::Operand SqueezeNet::BuildFire(const ml::GraphBuilder& builder,
     utils::Conv2dOptions convOptions;
     if (!mNchw) {
         convOptions.inputLayout = ml::InputOperandLayout::Nhwc;
-        convOptions.filterLayout = ml::FilterOperandLayout::Hwio;
+        convOptions.filterLayout = ml::FilterOperandLayout::Ohwi;
     }
     const ml::Operand conv = BuildConv(builder, input, convName, &convOptions);
     const ml::Operand conv1x1 = BuildConv(builder, conv, conv1x1Name, &convOptions);
@@ -72,20 +73,6 @@ const ml::Operand SqueezeNet::BuildFire(const ml::GraphBuilder& builder,
     std::vector<ml::Operand> inputsOperand = {conv1x1, conv3x3};
     uint32_t axis = mNchw ? 1 : 3;
     return builder.Concat(inputsOperand.size(), inputsOperand.data(), axis);
-}
-
-std::vector<int32_t> ComputeExplicitPadding(int32_t inputSize,
-                                            int32_t stride,
-                                            int32_t filterSize,
-                                            int32_t dilation = 1) {
-    int32_t outSize = (inputSize + stride - 1) / stride;
-    int32_t effectiveFilterSize = (filterSize - 1) * dilation + 1;
-    int32_t neededInput = (outSize - 1) * stride + effectiveFilterSize;
-    int32_t totalPadding = std::max(0, neededInput - inputSize);
-    int32_t paddingToBeginning = totalPadding / 2;
-    int32_t paddingToEnd = (totalPadding + 1) / 2;
-    std::vector<int32_t> computedPadding = {paddingToBeginning, paddingToEnd};
-    return computedPadding;
 }
 
 bool SqueezeNet::LoadNCHW(const std::string& weightsPath, bool softmax) {
@@ -139,10 +126,9 @@ bool SqueezeNet::LoadNHWC(const std::string& weightsPath, bool softmax) {
     const ml::Operand input = utils::BuildInput(builder, "input", {1, 224, 224, 3});
     utils::Conv2dOptions conv1Options;
     conv1Options.strides = {2, 2};
+    conv1Options.autoPad = ml::AutoPad::SameUpper;
     conv1Options.inputLayout = ml::InputOperandLayout::Nhwc;
-    conv1Options.filterLayout = ml::FilterOperandLayout::Hwio;
-    std::vector<int32_t> padding = ComputeExplicitPadding(224, 2, 7);
-    conv1Options.padding = {padding[0], padding[1], padding[0], padding[1]};
+    conv1Options.filterLayout = ml::FilterOperandLayout::Ohwi;
     const ml::Operand conv1 = BuildConv(builder, input, "conv1", &conv1Options);
     utils::Pool2dOptions maxPool1Options;
     maxPool1Options.windowDimensions = {3, 3};
@@ -171,7 +157,7 @@ bool SqueezeNet::LoadNHWC(const std::string& weightsPath, bool softmax) {
         BuildFire(builder, maxpool8, "fire9_squeeze", "fire9_e1x1", "fire9_e3x3");
     utils::Conv2dOptions conv10Options;
     conv10Options.inputLayout = ml::InputOperandLayout::Nhwc;
-    conv10Options.filterLayout = ml::FilterOperandLayout::Hwio;
+    conv10Options.filterLayout = ml::FilterOperandLayout::Ohwi;
     const ml::Operand conv10 = BuildConv(builder, fire9, "conv10", &conv10Options);
     utils::Pool2dOptions avgPoolOptions;
     avgPoolOptions.windowDimensions = {13, 13};
