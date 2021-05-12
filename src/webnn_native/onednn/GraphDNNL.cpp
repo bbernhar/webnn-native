@@ -510,23 +510,84 @@ namespace webnn_native { namespace onednn {
         dnnl_memory_t inputMemory = mOperandMemoryMap.at(inputOperand);
         const dnnl_memory_desc_t* inputMemoryDesc;
         DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
-        std::vector<dnnl_dim_t> inputDims(inputMemoryDesc->dims,
-                                          inputMemoryDesc->dims + inputMemoryDesc->ndims);
+        std::vector<dnnl_dim_t> inputDims;
+        const Conv2dOptions* options = conv2d->GetOptions();
+        const dnnl_memory_desc_t* actualInputMemoryDesc;
+        if (options->inputLayout == ml::InputOperandLayout::Nhwc) {
+            dnnl_memory_desc_t transposedInputMemoryDesc;
+            const int permute[] = {0, 2, 3, 1};
+            DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedInputMemoryDesc, inputMemoryDesc,
+                                                   permute));
+            inputDims.assign(transposedInputMemoryDesc.dims,
+                             transposedInputMemoryDesc.dims + transposedInputMemoryDesc.ndims);
+            // logical dimension is always in {NCHW}
+            // physical layout is nhwc for input
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&transposedInputMemoryDesc, inputDims.size(),
+                                                  inputDims.data(), inputMemoryDesc->data_type,
+                                                  dnnl_nhwc));
+            actualInputMemoryDesc = &transposedInputMemoryDesc;
+        } else {
+            inputDims.assign(inputMemoryDesc->dims, inputMemoryDesc->dims + inputMemoryDesc->ndims);
+            actualInputMemoryDesc = inputMemoryDesc;
+        }
+
         const OperandBase* filterOperand = conv2d->Inputs()[1].Get();
         DAWN_ASSERT(mOperandMemoryMap.find(filterOperand) != mOperandMemoryMap.end());
         dnnl_memory_t filterMemory = mOperandMemoryMap.at(filterOperand);
         const dnnl_memory_desc_t* filterMemoryDesc;
         DAWN_TRY(GetMemoryDesc(filterMemory, &filterMemoryDesc));
-        std::vector<dnnl_dim_t> filterDims(filterMemoryDesc->dims,
-                                           filterMemoryDesc->dims + filterMemoryDesc->ndims);
-        dnnl_data_type_t dataType = inputMemoryDesc->data_type;
+        std::vector<dnnl_dim_t> filterDims;
+        const dnnl_memory_desc_t* actualFilterMemoryDesc;
+        if (options->filterLayout == ml::FilterOperandLayout::Hwio) {
+            dnnl_memory_desc_t transposedFilterMemoryDesc;
+            const int permute[] = {2, 3, 1, 0};
+            DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedFilterMemoryDesc, filterMemoryDesc,
+                                                   permute));
+            // logical dimension is always in {OIHW}
+            // physical layout is hwio for filter
+            filterDims.assign(transposedFilterMemoryDesc.dims,
+                              transposedFilterMemoryDesc.dims + transposedFilterMemoryDesc.ndims);
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&transposedFilterMemoryDesc, filterDims.size(),
+                                                  filterDims.data(), filterMemoryDesc->data_type,
+                                                  dnnl_hwio));
+
+            actualFilterMemoryDesc = &transposedFilterMemoryDesc;
+        } else if (options->filterLayout == ml::FilterOperandLayout::Ohwi) {
+            dnnl_memory_desc_t transposedFilterMemoryDesc;
+            const int permute[] = {0, 2, 3, 1};
+            DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedFilterMemoryDesc, filterMemoryDesc,
+                                                   permute));
+            filterDims.assign(transposedFilterMemoryDesc.dims,
+                              transposedFilterMemoryDesc.dims + transposedFilterMemoryDesc.ndims);
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&transposedFilterMemoryDesc, filterDims.size(),
+                                                  filterDims.data(), filterMemoryDesc->data_type,
+                                                  dnnl_ohwi));
+            actualFilterMemoryDesc = &transposedFilterMemoryDesc;
+        } else if (options->filterLayout == ml::FilterOperandLayout::Ihwo) {
+            dnnl_memory_desc_t transposedFilterMemoryDesc;
+            const int permute[] = {1, 2, 3, 0};
+            DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedFilterMemoryDesc, filterMemoryDesc,
+                                                   permute));
+            filterDims.assign(transposedFilterMemoryDesc.dims,
+                              transposedFilterMemoryDesc.dims + transposedFilterMemoryDesc.ndims);
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&transposedFilterMemoryDesc, filterDims.size(),
+                                                  filterDims.data(), filterMemoryDesc->data_type,
+                                                  dnnl_ihwo));
+            actualFilterMemoryDesc = &transposedFilterMemoryDesc;
+        } else {
+            filterDims.assign(filterMemoryDesc->dims,
+                              filterMemoryDesc->dims + filterMemoryDesc->ndims);
+            actualFilterMemoryDesc = filterMemoryDesc;
+        }
+
+        dnnl_data_type_t dataType = actualInputMemoryDesc->data_type;
         dnnl_memory_desc_t inputInitDesc;
         DAWN_TRY(dnnl_memory_desc_init_by_tag(&inputInitDesc, inputDims.size(), inputDims.data(),
                                               dataType, dnnl_format_tag_any));
+
         dnnl_memory_desc_t filterInitDesc;
         DAWN_TRY(dnnl_memory_desc_init_by_tag(&filterInitDesc, filterDims.size(), filterDims.data(),
                                               dataType, dnnl_format_tag_any));
-        const Conv2dOptions* options = conv2d->GetOptions();
         std::vector<dnnl_dim_t> strides = {options->strides[0], options->strides[1]};
         // Non-dilated convolution is defined by setting the dilation parameters to 0
         std::vector<dnnl_dim_t> dilates = {options->dilations[0] == 1 ? 0 : options->dilations[0],
@@ -552,13 +613,8 @@ namespace webnn_native { namespace onednn {
             // FIXME(nhu): implement the grouped conv2d.
             return DAWN_INTERNAL_ERROR("Grouped conv is unimplemented.");
         }
-        if (options->inputLayout != ml::InputOperandLayout::Nchw) {
-            // FIXME(nhu): implement the nhwc layout.
-            return DAWN_INTERNAL_ERROR("nhwc layout is unimplemented.");
-        }
         std::vector<dnnl_dim_t> outputDims(4);
         outputDims[0] = inputDims[0];
-        // Assume filter layout is oihw
         outputDims[1] = filterDims[0];
         for (int i = 2; i < 4; ++i) {
             int src = inputDims[i];
@@ -581,19 +637,21 @@ namespace webnn_native { namespace onednn {
         DAWN_TRY(dnnl_primitive_desc_create(&primitiveDesc, &convDesc, NULL, GetEngine(), NULL));
         const dnnl_memory_desc_t* inputInternalMemoryDesc =
             dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_src_md, 0);
+
         dnnl_memory_t inputInternalMemory;
-        DAWN_TRY(ReorderIfNeeded(inputMemoryDesc, inputMemory, inputInternalMemoryDesc,
+        DAWN_TRY(ReorderIfNeeded(actualInputMemoryDesc, inputMemory, inputInternalMemoryDesc,
                                  &inputInternalMemory));
         const dnnl_memory_desc_t* filterInternalMemoryDesc =
             dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_weights_md, 0);
         dnnl_memory_t filterInternalMemory;
-        DAWN_TRY(ReorderIfNeeded(filterMemoryDesc, filterMemory, filterInternalMemoryDesc,
+        DAWN_TRY(ReorderIfNeeded(actualFilterMemoryDesc, filterMemory, filterInternalMemoryDesc,
                                  &filterInternalMemory));
         const dnnl_memory_desc_t* outputMemoryDesc =
             dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
         dnnl_memory_t outputMemory;
         DAWN_TRY(
             dnnl_memory_create(&outputMemory, outputMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+
         dnnl_primitive_t primitive;
         DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
         DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
@@ -602,7 +660,33 @@ namespace webnn_native { namespace onednn {
                                              {DNNL_ARG_DST, outputMemory}};
         mOperations.push_back({primitive, args});
         mMemories.push_back(outputMemory);
-        mOperandMemoryMap.insert(std::make_pair(conv2d, outputMemory));
+
+        if (options->inputLayout == ml::InputOperandLayout::Nhwc) {
+            // reorder the output from primitive query layout to nhwc
+            dnnl_memory_desc_t finalOutputMemoryDesc;
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&finalOutputMemoryDesc, outputDims.size(),
+                                                  outputDims.data(), dataType, dnnl_nhwc));
+            dnnl_memory_t finalOutputMemory;
+            DAWN_TRY(ReorderIfNeeded(outputMemoryDesc, outputMemory, &finalOutputMemoryDesc,
+                                     &finalOutputMemory));
+            mOperandMemoryMap.insert(std::make_pair(conv2d, finalOutputMemory));
+
+            // transpose the output logical dims to nhwc
+            dnnl_memory_desc_t transposeOutputMemoryDesc;
+            std::vector<dnnl_dim_t> finalOutputDims(4);
+            finalOutputDims[0] = outputDims[0];
+            finalOutputDims[1] = outputDims[2];
+            finalOutputDims[2] = outputDims[3];
+            finalOutputDims[3] = outputDims[1];
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&transposeOutputMemoryDesc,
+                                                  finalOutputDims.size(), finalOutputDims.data(),
+                                                  dataType, dnnl_nchw));
+            mMemoryReinterprets.insert(
+                std::make_pair(finalOutputMemory, transposeOutputMemoryDesc));
+        } else {
+            mOperandMemoryMap.insert(std::make_pair(conv2d, outputMemory));
+        }
+
         return {};
     }
 
