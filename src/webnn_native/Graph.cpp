@@ -17,6 +17,7 @@
 #include <string>
 
 #include "common/Assert.h"
+#include "common/Log.h"
 #include "common/RefCounted.h"
 
 namespace webnn_native {
@@ -100,17 +101,19 @@ namespace webnn_native {
         CompileImpl(delgate);
     }
 
-    void GraphBase::CompileSync() {
-        CompileSyncImpl();
+    MLBuildGraphStatus GraphBase::CompileSync() {
+        return CompileSyncImpl();
     }
 
-    void GraphBase::CompileSyncImpl() {
-        UNREACHABLE();
+    MLBuildGraphStatus GraphBase::CompileSyncImpl() {
+        dawn::ErrorLog() << "Unimplemented";
+        return MLBuildGraphStatus_Error;
     }
 
     MLComputeGraphStatus GraphBase::ComputeSyncImpl(NamedInputsBase* inputs,
                                                     NamedOutputsBase* outputs) {
-        UNREACHABLE();
+        dawn::ErrorLog() << "Unimplemented";
+        return MLComputeGraphStatus_Error;
     }
 
 }  // namespace webnn_native
