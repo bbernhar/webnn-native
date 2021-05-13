@@ -27,9 +27,9 @@ Info: Execution Time: 7.667 ms
 
 Prediction Result:
 #   Probability   Label
-0   91.68%        lesser panda
-1   0.83%         polecat
-2   0.20%         giant panda
+0   93.83%        lesser panda
+1   0.55%         polecat
+2   0.18%         giant panda
 
 Info: Done.
 ```
