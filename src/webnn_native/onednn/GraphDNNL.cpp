@@ -537,6 +537,7 @@ namespace webnn_native { namespace onednn {
         const dnnl_memory_desc_t* filterMemoryDesc;
         DAWN_TRY(GetMemoryDesc(filterMemory, &filterMemoryDesc));
         std::vector<dnnl_dim_t> filterDims;
+        std::vector<dnnl_dim_t> groupFilterDims;
         const dnnl_memory_desc_t* actualFilterMemoryDesc;
         dnnl_memory_desc_t transposedFilterMemoryDesc;
         if (options->filterLayout == ml::FilterOperandLayout::Hwio) {
@@ -578,14 +579,52 @@ namespace webnn_native { namespace onednn {
             actualFilterMemoryDesc = filterMemoryDesc;
         }
 
+        dnnl_memory_desc_t newFilterMemoryDesc;
+        if (options->groups != 1) {
+            groupFilterDims = {options->groups, filterDims[0] / options->groups, filterDims[1],
+                               filterDims[2], filterDims[3]};
+            switch (options->filterLayout) {
+                case ml::FilterOperandLayout::Oihw:
+                    DAWN_TRY(dnnl_memory_desc_init_by_tag(
+                        &newFilterMemoryDesc, groupFilterDims.size(), groupFilterDims.data(),
+                        filterMemoryDesc->data_type, dnnl_goihw));
+                    break;
+                case ml::FilterOperandLayout::Hwio:
+                    DAWN_TRY(dnnl_memory_desc_init_by_tag(
+                        &newFilterMemoryDesc, groupFilterDims.size(), groupFilterDims.data(),
+                        filterMemoryDesc->data_type, dnnl_hwigo));
+                    break;
+                case ml::FilterOperandLayout::Ohwi:
+                    DAWN_TRY(dnnl_memory_desc_init_by_tag(
+                        &newFilterMemoryDesc, groupFilterDims.size(), groupFilterDims.data(),
+                        filterMemoryDesc->data_type, dnnl_gohwi));
+                    break;
+                case ml::FilterOperandLayout::Ihwo:
+                    DAWN_TRY(dnnl_memory_desc_init_by_tag(
+                        &newFilterMemoryDesc, groupFilterDims.size(), groupFilterDims.data(),
+                        filterMemoryDesc->data_type, dnnl_idhwo));
+                    break;
+                default:
+                    break;
+            }
+            actualFilterMemoryDesc = &newFilterMemoryDesc;
+        }
+
         dnnl_data_type_t dataType = actualInputMemoryDesc->data_type;
         dnnl_memory_desc_t inputInitDesc;
         DAWN_TRY(dnnl_memory_desc_init_by_tag(&inputInitDesc, inputDims.size(), inputDims.data(),
                                               dataType, dnnl_format_tag_any));
 
         dnnl_memory_desc_t filterInitDesc;
-        DAWN_TRY(dnnl_memory_desc_init_by_tag(&filterInitDesc, filterDims.size(), filterDims.data(),
-                                              dataType, dnnl_format_tag_any));
+        if (options->groups == 1) {
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&filterInitDesc, filterDims.size(),
+                                                  filterDims.data(), dataType,
+                                                  dnnl_format_tag_any));
+        } else {
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&filterInitDesc, groupFilterDims.size(),
+                                                  groupFilterDims.data(), dataType,
+                                                  dnnl_format_tag_any));
+        }
         std::vector<dnnl_dim_t> strides = {options->strides[0], options->strides[1]};
         // Non-dilated convolution is defined by setting the dilation parameters to 0
         std::vector<dnnl_dim_t> dilates = {options->dilations[0] == 1 ? 0 : options->dilations[0],
@@ -607,10 +646,6 @@ namespace webnn_native { namespace onednn {
 
         std::vector<dnnl_dim_t> padding_l = {paddingTop, paddingLeft};
         std::vector<dnnl_dim_t> padding_r = {paddingBottom, paddingRight};
-        if (options->groups != 1) {
-            // FIXME(nhu): implement the grouped conv2d.
-            return DAWN_INTERNAL_ERROR("Grouped conv is unimplemented.");
-        }
         std::vector<dnnl_dim_t> outputDims(4);
         outputDims[0] = inputDims[0];
         outputDims[1] = filterDims[0];
