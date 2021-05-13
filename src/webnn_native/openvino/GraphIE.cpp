@@ -27,16 +27,22 @@
 #include "webnn_native/openvino/ErrorIE.h"
 #include "webnn_native/openvino/ienn_symbol_table/ienn_symbol_table.h"
 
-#define COMPUTE_ERROR_CALLBACK(code, messages)                                                    \
-    {                                                                                             \
-        MaybeError maybeError = CheckStatusCode(code, messages);                                  \
-        if (maybeError.IsError()) {                                                               \
-            std::unique_ptr<ErrorData> error = maybeError.AcquireError();                         \
-            callback(MLComputeGraphStatus_Error, nullptr, error->GetMessage().c_str(), userdata); \
-            return;                                                                               \
-        }                                                                                         \
-    }                                                                                             \
-    for (;;)                                                                                      \
+#define COMPUTE_ERROR_CALLBACK(code, messages)                                             \
+    {                                                                                      \
+        MaybeError maybeError = CheckStatusCode(code, messages);                           \
+        if (maybeError.IsError()) {                                                        \
+            std::unique_ptr<ErrorData> error = maybeError.AcquireError();                  \
+            if (callback) {                                                                \
+                callback(MLComputeGraphStatus_Error, nullptr, error->GetMessage().c_str(), \
+                         userdata);                                                        \
+                return MLComputeGraphStatus_Error;                                         \
+            } else {                                                                       \
+                dawn::ErrorLog() << error->GetMessage();                                   \
+                return MLComputeGraphStatus_Error;                                         \
+            }                                                                              \
+        }                                                                                  \
+    }                                                                                      \
+    for (;;)                                                                               \
     break
 
 namespace webnn_native { namespace ie {
@@ -404,6 +410,23 @@ namespace webnn_native { namespace ie {
                             MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
+        this->GenericComputeImpl(inputs, outputs, callback, userdata);
+    }
+
+    MLBuildGraphStatus Graph::CompileSyncImpl() {
+        IEStatusCode code = IE(ie_create_compilation)(mIeModel, &mIeCompilation);
+        return code == IEStatusCode::OK ? MLBuildGraphStatus_Success : MLBuildGraphStatus_Error;
+    }
+
+    MLComputeGraphStatus Graph::ComputeSyncImpl(NamedInputsBase* inputs,
+                                                NamedOutputsBase* outputs) {
+        return this->GenericComputeImpl(inputs, outputs);
+    }
+
+    MLComputeGraphStatus Graph::GenericComputeImpl(NamedInputsBase* inputs,
+                                                   NamedOutputsBase* outputs,
+                                                   MLComputeGraphCallback callback,
+                                                   void* userdata) {
         // Set input data to nGraph.
         for (auto& input : inputs->GetRecords()) {
             ie_operand_t ieOperand;
@@ -445,9 +468,11 @@ namespace webnn_native { namespace ie {
                 COMPUTE_ERROR_CALLBACK(code, "IE get result");
             }
         }
-        callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
-                 nullptr, userdata);
-        return;
+        if (callback) {
+            callback(MLComputeGraphStatus_Success,
+                     reinterpret_cast<MLNamedResults>(results.Detach()), nullptr, userdata);
+        }
+        return MLComputeGraphStatus_Success;
     }
 
 }}  // namespace webnn_native::ie

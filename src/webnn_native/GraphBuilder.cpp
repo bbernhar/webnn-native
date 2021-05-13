@@ -191,9 +191,14 @@ namespace webnn_native {
 
     GraphBase* GraphBuilderBase::BuildSync(NamedOperandsBase const* namedOperands) {
         GraphBase* graph = this->GenericBuildImpl(namedOperands);
-        if (graph != nullptr) {
-            graph->CompileSync();
+        if (graph == nullptr) {
+            return nullptr;
         }
+
+        if (graph->CompileSync() != MLBuildGraphStatus_Success) {
+            return nullptr;
+        }
+
         return graph;
     }
 

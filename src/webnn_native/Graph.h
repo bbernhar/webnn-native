@@ -70,7 +70,7 @@ namespace webnn_native {
         virtual MaybeError AddClamp(const op::Clamp* Clamp);
         virtual MaybeError Finish();
         virtual void Compile(BuildGraphCallbackDelgate delgate);
-        virtual void CompileSync();
+        virtual MLBuildGraphStatus CompileSync();
 
       private:
         virtual void CompileImpl(BuildGraphCallbackDelgate delgate) = 0;
@@ -78,7 +78,7 @@ namespace webnn_native {
                                  MLComputeGraphCallback callback,
                                  void* userdata,
                                  NamedOutputsBase* outputs) = 0;
-        virtual void CompileSyncImpl();
+        virtual MLBuildGraphStatus CompileSyncImpl();
         virtual MLComputeGraphStatus ComputeSyncImpl(NamedInputsBase* inputs,
                                                      NamedOutputsBase* outputs);
     };

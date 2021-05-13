@@ -721,26 +721,26 @@ namespace webnn_native { namespace xnnpack {
         return;
     }
 
-    void Graph::CompileSyncImpl() {
-        return;
+    MLBuildGraphStatus Graph::CompileSyncImpl() {
+        return MLBuildGraphStatus_Success;
     }
 
     MLComputeGraphStatus Graph::ComputeSyncImpl(NamedInputsBase* inputs,
                                                 NamedOutputsBase* outputs) {
-        return this->GenericComputeImpl(inputs, nullptr, nullptr, outputs);
+        return this->GenericComputeImpl(inputs, outputs);
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,
                             MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
-        this->GenericComputeImpl(inputs, callback, userdata, outputs);
+        this->GenericComputeImpl(inputs, outputs, callback, userdata);
     }
 
     MLComputeGraphStatus Graph::GenericComputeImpl(NamedInputsBase* inputs,
+                                                   NamedOutputsBase* outputs,
                                                    MLComputeGraphCallback callback,
-                                                   void* userdata,
-                                                   NamedOutputsBase* outputs) {
+                                                   void* userdata) {
         std::vector<const void*> inputBuffers(mInputs.size(), nullptr);
         for (size_t i = 0; i < mInputs.size(); ++i) {
             if (mInputs[i]->opType == OperandType::CONSTANT) {
