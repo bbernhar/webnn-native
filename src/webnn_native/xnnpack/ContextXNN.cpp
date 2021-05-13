@@ -14,6 +14,8 @@
 
 #include "webnn_native/xnnpack/ContextXNN.h"
 
+#include <thread>
+
 #include "common/Log.h"
 #include "common/RefCounted.h"
 #include "webnn_native/xnnpack/GraphXNN.h"
@@ -50,8 +52,8 @@ namespace webnn_native { namespace xnnpack {
             dawn::ErrorLog() << "xnn_initialize failed: " << status;
             return status;
         }
-        // Create a thread pool with as many threads as there are logical processors in the system.
-        mThreadpool = pthreadpool_create(0);
+        // Create a thread pool with as half of the logical processors in the system.
+        mThreadpool = pthreadpool_create(std::thread::hardware_concurrency() / 2);
         if (mThreadpool == NULL) {
             dawn::ErrorLog() << "pthreadpool_create failed";
             return xnn_status_out_of_memory;
