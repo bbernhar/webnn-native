@@ -14,7 +14,7 @@ const winston = require('winston');
 class BuilderConf {
   /**
    * @param {backend} backend Target backend.
-   * @param {string} conf Configuration file for build.
+   * @param {String} conf Configuration file for build.
    */
   constructor(backend, conf) {
     this.conf_ = conf;
@@ -138,28 +138,28 @@ class BuilderConf {
   }
 
   /**
-   * @return {string} target backend.
+   * @return {String} target backend.
    */
   get backend() {
     return this.backend_;
   }
 
   /**
-   * @return {string} target OS.
+   * @return {String} target OS.
    */
   get targetOs() {
     return this.targetOs_;
   }
 
   /**
-   * @return {string} target CPU.
+   * @return {String} target CPU.
    */
   get targetCpu() {
     return this.targetCpu_;
   }
 
   /**
-   * @return {string} arguments to run 'gn gen'.
+   * @return {String} arguments to run 'gn gen'.
    */
   get gnArgs() {
     let args = 'target_os=\"' + this.targetOs_ + '\"';
@@ -172,7 +172,7 @@ class BuilderConf {
   }
 
   /**
-   * @return {string} build type.
+   * @return {String} build type.
    */
   get buildType() {
     return this.gnArgs_.isDebug ? 'Debug' : 'Release';
@@ -208,7 +208,7 @@ class BuilderConf {
 
   /**
    * Get hosted OS string.
-   * @return {string} hosted OS.
+   * @return {String} hosted OS.
    */
   getHostOs() {
     const hostOs = os.platform();
@@ -227,7 +227,7 @@ class BuilderConf {
 
   /**
    * Get hosted CPU string.
-   * @return {string} hosted CPU.
+   * @return {String} hosted CPU.
    */
   getHostCpu() {
     let hostCpu = os.arch();

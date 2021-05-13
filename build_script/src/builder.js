@@ -112,7 +112,7 @@ class Builder {
 
   /**
    * Run specified command with optional options.
-   * @param {string} cmd Command string.
+   * @param {String} cmd Command string.
    * @param {object} options An object containing options as key-value pairs
    *    {backend:"", config:"",}.
    */
@@ -243,11 +243,13 @@ class Builder {
 
   /**
    * Copy test data resources files into out directory.
+   * @param {String} key json key, default "default"
    */
-  copyTestDataResources() {
-    const resourcesFile = path.join(this.rootDir_,
-        'build_script', 'src', 'test_data.json');
-    const config = JSON.parse(fs.readFileSync(resourcesFile, 'utf8'));
+  copyTestDataResources(key = 'default') {
+    const testDataJson =
+        path.join(this.rootDir_, 'build_script', 'src', 'test_data.json');
+    const josnConfig = JSON.parse(fs.readFileSync(testDataJson, 'utf8'));
+    const config = josnConfig[key];
     const start = this.rootDir_.length + 1;
     for (const category in config) {
       if (config.hasOwnProperty(category)) {
@@ -281,16 +283,17 @@ class Builder {
     this.copyTestDataResources();
     const buildInfo = this.getBuildInfo();
     const packageName =
-      `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.zip`;
+      `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.tgz`;
     console.log(`packageName: ${packageName}`);
     const packageFile = path.join(this.rootDir_, packageName);
     const packageCfg = path.join(
-        this.rootDir_, 'build_script', 'src', `FILES_${buildInfo.os}.cfg`);
-    const zipScript = path.join(
-        this.rootDir_, 'build_script', 'tools', 'make_zip.py');
+        this.rootDir_, 'build_script', 'src', `tar_${buildInfo.os}.json`);
+    const compressedScript = path.join(
+        this.rootDir_, 'build_script', 'tools', 'make_tar.py');
     await this.childCommand(
         'python',
-        [zipScript, this.outDir_, packageCfg, packageFile], this.rootDir_);
+        [compressedScript, this.outDir_, packageCfg, packageFile],
+        this.rootDir_);
     if (!this.childResult_.success) {
       this.config_.logger.error('Failed to package.');
       await this.sendEmail('FAILED', 'Error: Failed to package');
@@ -312,16 +315,8 @@ class Builder {
 
     const buildInfo = this.getBuildInfo();
     const packageName =
-      `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.zip`;
+      `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.tgz`;
     const packageFile = path.join(this.outDir_, packageName);
-
-    try {
-      fs.accessSync(packageFile);
-    } catch (e) {
-      this.config_.logger.error(`Fail to access ${packagedFile}`);
-      await this.sendEmail('FAILED', `Fail to access ${packagedFile}`);
-      return;
-    }
 
     await this.makeRemoteDir();
     await this.childCommand(
@@ -388,7 +383,7 @@ class Builder {
   }
 
   /**
-   * @return {string} Returns a string for commit id.
+   * @return {String} Returns a string for commit id.
    */
   async getBuildCommitId() {
     const obj = {};
@@ -468,9 +463,9 @@ class Builder {
 
   /**
    * Execute command.
-   * @param {string} cmd command string.
+   * @param {String} cmd command string.
    * @param {array} args arguments array.
-   * @param {string} cwd path string.
+   * @param {String} cwd path string.
    * @param {object} result return value.
    * @return {object} child_process.spawn promise.
    */

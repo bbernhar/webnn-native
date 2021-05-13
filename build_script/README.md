@@ -75,8 +75,8 @@ Seetings in **"email-service"**: Specifies directory for storing output packages
 - from: Sender of the format (address or name \<address\> or "name" \<address\>).
 - to: Recipients (same format as above), multiple recipients are separated by a comma.
 
-### Configure files for packaging ZIP file
-Please config the JSON file [test_data.json](./src/test_data.json) to include test data resources files such as weights files, model files and image files for packaging ZIP file. And config the file [FILES_linux.cfg](./src/FILES_linux.cfg) to include extraction build files for Linux platform, or config the file [FILES_win.cfg](./src/FILES_win.cfg) to include extraction build files for Windows platform.
+### Configure files for packaging .tgz compressed file
+Please config the JSON file [test_data.json](./src/test_data.json) to add test data resources files such as weights files, model files, and image files into .tgz compressed file. And config the file [tar_linux.cfg](./src/tar_linux.cfg) to include extraction build files for Linux platform, or config the file [tar_win.cfg](./src/tar_win.cfg) to include extraction build files for Windows platform.
 
 ### Install
 ```sh
@@ -205,7 +205,8 @@ The usage of backend and config arguments are same with above **Build** command
 Save logging message into /tmp/webnn_\<target-os\>\_\<target-cpu\>\_\<backend\>>.log when build on Linux platform or C:\Users\\<username\>\AppData\Local\Temp\\<target-os\>\_\<target-cpu\>\_\<backend\>>.log when build on Windows platform.
 
 ## Tools
-make_zip.py is a script for packaging build to zip file.  
+linter.py is a script for check js scripts by eslint tool.  
+make_tar.py is a script for packaging build to .tgz compressed file.  
 nightly-test is an auto test framework by testing build, see details on [tools/nightly-test/README.md](./tools/nightly-test/README.md).
 
 ## BKMs
@@ -215,11 +216,3 @@ nightly-test is an auto test framework by testing build, see details on [tools/n
 
 ### Coding style
 We're following the [Google JavaScript coding style](https://google.github.io/styleguide/jsguide.html) in general. And there is pre-commit checking `tools/linter.js` to ensure styling before commit code.
-
-### Copyright & License
-These following files were from https://chromium.googlesource.com/chromium/src/:  
-src/FILES_linux.cg was renamed and modified from https://chromium.googlesource.com/chromium/src/+/master/chrome/tools/build/linux/FILES.cfg,  
-src/FILES_win.cfg was renamed and modified from https://chromium.googlesource.com/chromium/src/+/master/chrome/tools/build/win/FILES.cfg,  
-and tools/make_zip.py was from https://chromium.googlesource.com/chromium/src/+/master/chrome/tools/build/make_zip.py  
-
-These three files are licensed by BSD-style license.

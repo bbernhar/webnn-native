@@ -9,19 +9,22 @@ const utils = require('./utils');
 class Tester {
   /**
    * Create a tester.
-   * @param {string} rootDir - The root directory path.
+   * @param {String} rootDir - The root directory path.
    * @param {TesterConfig} config - The testerConfig.
    */
   constructor(rootDir, config) {
     this.rootDir_ = rootDir;
     this.config_ = config;
     this.logger_ = config.logger;
+    this.unzipPath_ = null;
+    this.resultsCSV_ = null;
   }
 
   /**
    * Download build.
-   * @param {string} backend - value: 'null' / 'openvino' / 'dml'
-   * @return {string} download status: 'SUCCEEDED' / 'FAILED'
+   * @param {String} backend - value: 'null', 'openvino', 'dml', 'onednn',
+   *                                  'xnnpack'.
+   * @return {String} download status: 'SUCCEEDED' / 'FAILED'
    */
   async downloadBuild(backend) {
     const buildUrl = this.config_.getBuildUrl(backend);
@@ -45,114 +48,186 @@ class Tester {
   }
 
   /**
+   * Run UnitTests by null backend.
+   */
+  async runUnitTests() {
+    const result = {output: ''};
+    if (this.config_.device.os === 'linux') {
+      await utils.childCommand(
+          this.logger_, './webnn_unittests', [], this.unzipPath_, result);
+    } else if (this.config_.device.os === 'win') {
+      await utils.childCommand(this.logger_, 'webnn_unittests.exe', [],
+          this.unzipPath_, result);
+    }
+    await utils.saveResultsCSV(
+        this.logger_, this.resultsCSV_, result.output, 'UnitTests');
+  }
+
+  /**
+   * Run End2EndTests.
+   */
+  async runEnd2EndTests() {
+    const result = {output: ''};
+    if (this.config_.device.os === 'linux') {
+      await utils.childCommand(
+          this.logger_, './webnn_end2end_tests', [], this.unzipPath_, result);
+    } else if (this.config_.device.os === 'win') {
+      await utils.childCommand(this.logger_, 'webnn_end2end_tests.exe', [],
+          this.unzipPath_, result);
+    }
+    await utils.saveResultsCSV(
+        this.logger_, this.resultsCSV_, result.output, 'End2EndTests');
+  }
+
+  /**
+   * Run LeNet example.
+   */
+  async runLeNetExample() {
+    const result = {output: ''};
+    if (this.config_.device.os === 'linux') {
+      await utils.childCommand(this.logger_,
+          './LeNet -m node/third_party/webnn-polyfill/test-data/models/' +
+          'lenet_nchw/weights/lenet.bin -i examples/images/idx/0.idx -n 201',
+          [], this.unzipPath_, result);
+    } else if (this.config_.device.os === 'win') {
+      await utils.childCommand(this.logger_,
+          'LeNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\lenet_nchw\\weights\\lenet.bin -i ' +
+          'examples\\images\\idx\\0.idx -n 201',
+          [], this.unzipPath_, result);
+    }
+    await utils.saveResultsCSV(
+        this.logger_, this.resultsCSV_, result.output, 'Examples', 'LeNet');
+  }
+
+  /**
+   * Run SqueezeNet example.
+   */
+  async runSqueezeNetExample() {
+    let result = {output: ''};
+    if (this.config_.device.os === 'linux') {
+      // Run SqueezeNet nchw example
+      await utils.childCommand(this.logger_,
+          './SqueezeNet -m node/third_party/webnn-polyfill/test-data/models/' +
+          'squeezenet1.1_nchw/weights/ -i examples/images/test.jpg -l nchw ' +
+          '-n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'SqueezeNet1.1_nchw');
+      // Run SqueezeNet nhwc example
+      result = {output: ''};
+      await utils.childCommand(this.logger_,
+          './SqueezeNet -m node/third_party/webnn-polyfill/test-data/models/' +
+          'squeezenet1.0_nhwc/weights/ -i examples/images/test.jpg -l nhwc ' +
+          '-n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'SqueezeNet1.0_nhwc');
+    } else if (this.config_.device.os === 'win') {
+      // Run SqueezeNet nchw example
+      await utils.childCommand(this.logger_,
+          'SqueezeNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\squeezenet1.1_nchw\\weights\\ -i examples\\images\\' +
+          'test.jpg -l nchw -n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'SqueezeNet1.1_nchw');
+      // Run SqueezeNet nhwc example
+      result = {output: ''};
+      await utils.childCommand(this.logger_,
+          'SqueezeNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\squeezenet1.0_nhwc\\weights\\ -i examples\\images\\' +
+          'test.jpg -l nhwc -n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'SqueezeNet1.0_nhwc');
+    }
+  }
+
+  /**
+   * Run MobileNetv2 example.
+   */
+  async runMobileNetv2Example() {
+    let result = {output: ''};
+    if (this.config_.device.os === 'linux') {
+      // Run MobileNetv2 nchw example
+      await utils.childCommand(this.logger_,
+          './MobileNetV2 -m node/third_party/webnn-polyfill/test-data/models/' +
+          'mobilenetv2_nchw/weights/ -i examples/images/test.jpg -l nchw ' +
+          '-n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'MobileNetv2_nchw');
+      // Run MobileNetv2 nhwc example
+      result = {output: ''};
+      await utils.childCommand(this.logger_,
+          './MobileNetV2 -m node/third_party/webnn-polyfill/test-data/models/' +
+          'mobilenetv2_nhwc/weights/ -i examples/images/test.jpg -l nhwc ' +
+          '-n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'MobileNetv2_nhwc');
+    } else if (this.config_.device.os === 'win') {
+      // Run MobileNetv2 nchw example
+      await utils.childCommand(this.logger_,
+          'MobileNetV2.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\mobilenetv2_nchw\\weights\\ -i examples\\images\\test.jpg ' +
+          '-l nchw -n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'MobileNetv2_nchw');
+      // Run MobileNetv2 nhwc example
+      result = {output: ''};
+      await utils.childCommand(this.logger_,
+          'MobileNetV2.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\mobilenetv2_nhwc\\weights\\ -i examples\\images\\test.jpg ' +
+          '-l nhwc -n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'MobileNetv2_nhwc');
+    }
+  }
+
+  /**
    * Run build.
-   * @param {string} backend - value: 'null' / 'openvino' / 'dml'
+   * @param {String} backend - value: 'null', 'openvino', 'dml', 'onednn',
+   *                                  'xnnpack'.
    */
   async run(backend) {
-    // Extract build zip package
+    // Extract build .tgz package
     const buildFile = path.join(this.rootDir_, 'out', 'builds',
         this.config_.targetCommitId,
         `${this.config_.device.os}_${this.config_.device.cpu}_${backend}`,
         `webnn-${this.config_.device.os}-${this.config_.device.cpu}-` +
-        `${backend}.zip`,
+        `${backend}.tgz`,
     );
-    const unzipPath = path.join(os.tmpdir(),
+    this.unzipPath_ = path.join(os.tmpdir(),
         `${this.config_.targetCommitId}_${backend}`);
 
-    if (fs.existsSync(unzipPath)) {
-      fs.removeSync(unzipPath);
+    if (fs.existsSync(this.unzipPath_)) {
+      fs.removeSync(this.unzipPath_);
     }
 
-    await utils.extractBuild(this.logger_, buildFile, unzipPath);
+    fs.mkdirpSync(this.unzipPath_);
+
+    utils.extractBuild(this.logger_, buildFile, this.unzipPath_);
 
     // Run tests and save results into csv files
-    const resultsCSV = path.join(this.config_.resultsDir,
+    this.resultsCSV_ = path.join(this.config_.resultsDir,
         `webnn-${backend}-${this.config_.device.os}-` +
         `${this.config_.device.cpu}-${this.config_.targetCommitId}_` +
         `${this.config_.device.name}.csv`);
     try {
-      let result = {output: ''};
       if (backend === 'null') {
-        // Run UnitTests by null backend
-        if (this.config_.device.os === 'linux') {
-          await utils.childCommand(
-              this.logger_, './webnn_unittests', [], unzipPath, result);
-        } else if (this.config_.device.os === 'win') {
-          await utils.childCommand(this.logger_, 'webnn_unittests.exe', [],
-              unzipPath, result);
-        }
-        await utils.saveResultsCSV(
-            this.logger_, resultsCSV, result.output, 'UnitTests');
+        await this.runUnitTests();
       } else {
-        if (this.config_.device.os === 'linux') {
-          // Run End2EndTests
-          await utils.childCommand(this.logger_, './webnn_end2end_tests', [],
-              unzipPath, result);
-          await utils.saveResultsCSV(
-              this.logger_, resultsCSV, result.output, 'End2EndTests');
-          // Run LeNet example
-          result = {output: ''};
-          await utils.childCommand(this.logger_,
-              './LeNet -m examples/LeNet/lenet.bin ' +
-              '-i examples/images/idx/0.idx -n 201', [], unzipPath, result);
-          await utils.saveResultsCSV(this.logger_, resultsCSV, result.output,
-              'Examples', 'LeNet');
-          // Run SqueezeNet nchw example
-          result = {output: ''};
-          await utils.childCommand(this.logger_,
-              './SqueezeNet -i examples/images/test.jpg -l nchw ' +
-              '-w node/third_party/webnn-polyfill/test/models/' +
-              'squeezenet1.1_nchw/weights/ -n 201',
-              [], unzipPath, result);
-          await utils.saveResultsCSV(this.logger_, resultsCSV, result.output,
-              'Examples', 'SqueezeNet1.1_nchw');
-          // Run SqueezeNet nhwc example
-          result = {output: ''};
-          await utils.childCommand(this.logger_,
-              './SqueezeNet -i examples/images/test.jpg -l nhwc ' +
-              '-w node/third_party/webnn-polyfill/test/models/' +
-              'squeezenet1.0_nhwc/weights/ -n 201',
-              [], unzipPath, result);
-          await utils.saveResultsCSV(this.logger_, resultsCSV, result.output,
-              'Examples', 'SqueezeNet1.0_nhwc');
-        } else if (this.config_.device.os === 'win') {
-          // Run End2EndTests
-          await utils.childCommand(
-              this.logger_, 'webnn_end2end_tests.exe', [], unzipPath, result);
-          await utils.saveResultsCSV(
-              this.logger_, resultsCSV, result.output, 'End2EndTests');
-          // Run LeNet example
-          result = {output: ''};
-          await utils.childCommand(this.logger_,
-              'LeNet.exe -m examples\\LeNet\\lenet.bin ' +
-              '-i examples\\images\\idx\\0.idx -n 201',
-              [], unzipPath, result);
-          await utils.saveResultsCSV(this.logger_, resultsCSV, result.output,
-              'Examples', 'LeNet');
-          // Run SqueezeNet nchw example
-          result = {output: ''};
-          await utils.childCommand(this.logger_,
-              'SqueezeNet.exe -i examples\\images\\test.jpg -l nchw ' +
-              '-w node\\third_party\\webnn-polyfill\\test\\models\\' +
-              'squeezenet1.1_nchw\\weights\\ -n 201', [], unzipPath, result);
-          await utils.saveResultsCSV(this.logger_, resultsCSV, result.output,
-              'Examples', 'SqueezeNet1.1_nchw');
-          // Run SqueezeNet nhwc example
-          result = {output: ''};
-          await utils.childCommand(this.logger_,
-              'SqueezeNet.exe -i examples\\images\\test.jpg -l nhwc ' +
-              '-w node\\third_party\\webnn-polyfill\\test\\models\\' +
-              'squeezenet1.0_nhwc\\weights\\ -n 201', [], unzipPath, result);
-          await utils.saveResultsCSV(this.logger_, resultsCSV, result.output,
-              'Examples', 'SqueezeNet1.0_nhwc');
+        if (backend === 'onednn') {
+          process.env.LD_LIBRARY_PATH = this.unzipPath_;
         }
+        await this.runEnd2EndTests();
+        await this.runLeNetExample();
+        await this.runSqueezeNetExample();
+        await this.runMobileNetv2Example();
       }
       // Upload results CSV file onto Reports Server
-      await utils.uploadResults(this.logger_, resultsCSV, this.config_.userHost,
+      await utils.uploadResults(
+          this.logger_, this.resultsCSV_, this.config_.userHost,
           this.config_.remoteDir, this.config_.resultsDir);
-      fs.removeSync(unzipPath);
+      fs.removeSync(this.unzipPath_);
     } catch (error) {
-      fs.removeSync(unzipPath);
+      fs.removeSync(this.unzipPath_);
       throw error;
     }
   }
