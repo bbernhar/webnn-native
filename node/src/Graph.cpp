@@ -187,7 +187,7 @@ namespace node {
                     jsTypedArray.ByteOffset());
                 resource.size = jsTypedArray.ByteLength();
             }
-            if (jsResource.Has("dimensions")) {
+            if (HasOptionMember(jsResource, "dimensions")) {
                 if (!GetInt32Array(jsResource.Get("dimensions"), resource.dimensions)) {
                     return false;
                 }
