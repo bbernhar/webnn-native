@@ -58,14 +58,14 @@ namespace webnn_native { namespace xnnpack {
                          void* userdata,
                          NamedOutputsBase* outputs = nullptr) override;
 
-        void CompileSyncImpl() override;
+        MLBuildGraphStatus CompileSyncImpl() override;
         MLComputeGraphStatus ComputeSyncImpl(NamedInputsBase* inputs,
                                              NamedOutputsBase* outputs) override;
 
         MLComputeGraphStatus GenericComputeImpl(NamedInputsBase* inputs,
-                                                MLComputeGraphCallback callback,
-                                                void* userdata,
-                                                NamedOutputsBase* outputs);
+                                                NamedOutputsBase* outputs,
+                                                MLComputeGraphCallback callback = nullptr,
+                                                void* userdata = nullptr);
 
         enum OperandType { INPUT, CONSTANT, BINARY, CLAMP, CONV2D, POOL2D, UNARY };
         struct OperandInfo {
