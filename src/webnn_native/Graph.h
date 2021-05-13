@@ -52,6 +52,7 @@ namespace webnn_native {
                      MLComputeGraphCallback callback,
                      void* userdata,
                      NamedOutputsBase* outputs = nullptr);
+        MLComputeGraphStatus ComputeSync(NamedInputsBase* inputs, NamedOutputsBase* outputs);
 
         virtual MaybeError AddConstant(const op::Constant* constant);
         virtual MaybeError AddInput(const op::Input* input);
@@ -69,6 +70,7 @@ namespace webnn_native {
         virtual MaybeError AddClamp(const op::Clamp* Clamp);
         virtual MaybeError Finish();
         virtual void Compile(BuildGraphCallbackDelgate delgate);
+        virtual void CompileSync();
 
       private:
         virtual void CompileImpl(BuildGraphCallbackDelgate delgate) = 0;
@@ -76,6 +78,9 @@ namespace webnn_native {
                                  MLComputeGraphCallback callback,
                                  void* userdata,
                                  NamedOutputsBase* outputs) = 0;
+        virtual void CompileSyncImpl();
+        virtual MLComputeGraphStatus ComputeSyncImpl(NamedInputsBase* inputs,
+                                                     NamedOutputsBase* outputs);
     };
 }  // namespace webnn_native
 

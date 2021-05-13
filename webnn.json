@@ -399,6 +399,13 @@
           {"name": "callback", "type": "build graph callback"},
           {"name": "userdata", "type": "void", "annotation": "*"}
         ]
+      },
+      {
+        "name": "buildSync",
+        "returns": "graph",
+        "args": [
+          {"name": "named operands", "type": "named operands"}
+        ]
       }
     ]
   },
@@ -523,6 +530,14 @@
           {"name": "callback", "type": "compute graph callback"},
           {"name": "userdata", "type": "void", "annotation": "*"},
           {"name": "outputs", "type": "named outputs", "optional": true}
+        ]
+      },
+      {
+        "name": "computeSync",
+        "returns": "compute graph status",
+        "args": [
+          {"name": "inputs", "type": "named inputs"},
+          {"name": "outputs", "type": "named outputs"}
         ]
       }
     ]

@@ -22,6 +22,7 @@
 namespace node {
 
     class BuildGraphWorker;
+    class GraphBuilder;
 
     class Graph : public Napi::ObjectWrap<Graph> {
       public:
@@ -33,8 +34,10 @@ namespace node {
 
       private:
         friend BuildGraphWorker;
+        friend GraphBuilder;
 
         Napi::Value Compute(const Napi::CallbackInfo& info);
+        Napi::Value ComputeSync(const Napi::CallbackInfo& info);
 
         ml::Graph mImpl;
         std::vector<std::string> mOutputNames;
