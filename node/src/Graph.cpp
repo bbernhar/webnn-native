@@ -187,7 +187,7 @@ namespace node {
                     jsTypedArray.ByteOffset());
                 resource.size = jsTypedArray.ByteLength();
             }
-            if (jsResource.Has("dimensions")) {
+            if (HasOptionMember(jsResource, "dimensions")) {
                 if (!GetInt32Array(jsResource.Get("dimensions"), resource.dimensions)) {
                     return false;
                 }
@@ -223,10 +223,36 @@ namespace node {
         return deferred.Promise();
     }
 
+    Napi::Value Graph::ComputeSync(const Napi::CallbackInfo& info) {
+        // status compute(NamedInputs inputs, NamedOutputs outputs);
+        WEBNN_NODE_ASSERT(info.Length() == 2, "The number of arguments is invalid.");
+        std::map<std::string, Input> inputs;
+        WEBNN_NODE_ASSERT(GetNamedResources<Input>(info[0], inputs),
+                          "The inputs parameter is invalid.");
+
+        std::map<std::string, Output> outputs;
+        WEBNN_NODE_ASSERT(GetNamedResources<Output>(info[1], outputs),
+                          "The outputs parameter is invalid.");
+
+        ml::NamedInputs namedInputs = ml::CreateNamedInputs();
+        for (auto& input : inputs) {
+            namedInputs.Set(input.first.data(), input.second.AsPtr());
+        }
+        ml::NamedOutputs namedOutputs = ml::CreateNamedOutputs();
+        for (auto& output : outputs) {
+            namedOutputs.Set(output.first.data(), output.second.AsPtr());
+        }
+        ml::ComputeGraphStatus status = mImpl.ComputeSync(namedInputs, namedOutputs);
+
+        return Napi::Number::New(info.Env(), static_cast<uint32_t>(status));
+    }
+
     Napi::Object Graph::Initialize(Napi::Env env, Napi::Object exports) {
         Napi::HandleScope scope(env);
-        Napi::Function func = DefineClass(
-            env, "MLGraph", {InstanceMethod("compute", &Graph::Compute, napi_enumerable)});
+        Napi::Function func =
+            DefineClass(env, "MLGraph",
+                        {InstanceMethod("compute", &Graph::Compute, napi_enumerable),
+                         InstanceMethod("computeSync", &Graph::ComputeSync, napi_enumerable)});
         constructor = Napi::Persistent(func);
         constructor.SuppressDestruct();
         exports.Set("MLGraph", func);

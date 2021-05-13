@@ -14,6 +14,7 @@
 
 #include "webnn_native/xnnpack/GraphXNN.h"
 
+#include <math.h>
 #include <numeric>
 
 #include "common/Assert.h"
@@ -83,8 +84,25 @@ const char* xnn_status2str(xnn_status v) {
     do {                                                                                    \
         std::string message = std::string(what) + std::string(" returns XNNPACK error: ") + \
                               std::string(xnn_status2str(s_));                              \
-        callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);           \
-        return;                                                                             \
+        if (callback) {                                                                     \
+            callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);       \
+            return MLComputeGraphStatus_Error;                                              \
+        } else {                                                                            \
+            dawn::ErrorLog() << message;                                                    \
+            return MLComputeGraphStatus_Error;                                              \
+        }                                                                                   \
+    } while (0)
+
+#define COMPLAIN_AND_CALLBACK(what)                                                   \
+    do {                                                                              \
+        std::string message = std::string(what);                                      \
+        if (callback) {                                                               \
+            callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata); \
+            return MLComputeGraphStatus_Error;                                        \
+        } else {                                                                      \
+            dawn::ErrorLog() << message;                                              \
+            return MLComputeGraphStatus_Error;                                        \
+        }                                                                             \
     } while (0)
 
 #define CALLBACK_TRY(f)                              \
@@ -410,12 +428,6 @@ namespace webnn_native { namespace xnnpack {
             dawn::ErrorLog() << "XNNPACK only supports input layout nhwc.";
             return xnn_status_invalid_parameter;
         }
-        // TODO(nhu): implement AutoPad
-        // WebNN padding: [beginning_height, ending_height, beginning_width, ending_width]
-        uint32_t padTop = options->padding[0];
-        uint32_t padBottom = options->padding[1];
-        uint32_t padLeft = options->padding[2];
-        uint32_t padRight = options->padding[3];
         uint32_t strideHeight = options->strides[0];
         uint32_t strideWidth = options->strides[1];
         uint32_t dilationHeight = options->dilations[0];
@@ -432,6 +444,39 @@ namespace webnn_native { namespace xnnpack {
             filterHeight = inputHeight;
             filterWidth = inputWidth;
         }
+
+        size_t outputHeight, outputWidth;
+        uint32_t padTop, padBottom, padLeft, padRight;
+        if (options->autoPad == ml::AutoPad::Explicit) {
+            // WebNN padding: [beginning_height, ending_height, beginning_width, ending_width]
+            padTop = options->padding[0];
+            padBottom = options->padding[1];
+            padLeft = options->padding[2];
+            padRight = options->padding[3];
+            outputHeight = ComputeConv2DOutputSize(inputHeight, filterHeight, padTop, padBottom,
+                                                   strideHeight, dilationHeight);
+            outputWidth = ComputeConv2DOutputSize(inputWidth, filterWidth, padLeft, padRight,
+                                                  strideWidth, dilationWidth);
+        } else {
+            outputHeight = ceil(inputHeight / strideHeight);
+            outputWidth = ceil(inputWidth / strideWidth);
+            size_t padAlongHeight =
+                std::max(size_t(0), (outputHeight - 1) * strideHeight + filterHeight - inputHeight);
+            size_t padAlongWidth =
+                std::max(size_t(0), (outputWidth - 1) * strideWidth + filterWidth - inputWidth);
+            if (options->autoPad == ml::AutoPad::SameUpper) {
+                padTop = floor(padAlongHeight / 2);
+                padBottom = padAlongHeight - padTop;
+                padLeft = floor(padAlongWidth / 2);
+                padRight = padAlongWidth - padLeft;
+            } else {
+                padBottom = floor(padAlongHeight / 2);
+                padTop = padAlongHeight - padBottom;
+                padRight = floor(padAlongWidth / 2);
+                padLeft = padAlongWidth - padRight;
+            }
+        }
+
         float outputMin = -std::numeric_limits<float>::infinity();
         float outputMax = +std::numeric_limits<float>::infinity();
         const uint32_t flags = 0;
@@ -457,10 +502,6 @@ namespace webnn_native { namespace xnnpack {
         }
         const std::shared_ptr<OperandInfo> outputInfo = mOperandInfoMap.at(pool2d);
         outputInfo->dataType = inputInfo->dataType;
-        size_t outputHeight = ComputeConv2DOutputSize(inputHeight, filterHeight, padTop, padBottom,
-                                                      strideHeight, dilationHeight);
-        size_t outputWidth = ComputeConv2DOutputSize(inputWidth, filterWidth, padLeft, padRight,
-                                                     strideWidth, dilationWidth);
         size_t batchSize = inputInfo->dims[0];
         // nchw
         outputInfo->dims = {batchSize, outputHeight, outputWidth, channels};
@@ -491,12 +532,6 @@ namespace webnn_native { namespace xnnpack {
 
         const Conv2dOptions* options = conv2d->GetOptions();
         uint32_t groups = options->groups;
-        // TODO(nhu): implement AutoPad
-        // WebNN padding: [beginning_height, ending_height, beginning_width, ending_width]
-        uint32_t padTop = options->padding[0];
-        uint32_t padBottom = options->padding[1];
-        uint32_t padLeft = options->padding[2];
-        uint32_t padRight = options->padding[3];
         uint32_t strideHeight = options->strides[0];
         uint32_t strideWidth = options->strides[1];
         uint32_t dilationHeight = options->dilations[0];
@@ -558,6 +593,38 @@ namespace webnn_native { namespace xnnpack {
             // FIXME(nhu): implement the grouped conv2d.
             dawn::ErrorLog() << "Grouped conv2d is unimplemented.";
             return xnn_status_unsupported_parameter;
+        }
+
+        size_t outputHeight, outputWidth;
+        uint32_t padTop, padBottom, padLeft, padRight;
+        if (options->autoPad == ml::AutoPad::Explicit) {
+            // WebNN padding: [beginning_height, ending_height, beginning_width, ending_width]
+            padTop = options->padding[0];
+            padBottom = options->padding[1];
+            padLeft = options->padding[2];
+            padRight = options->padding[3];
+            outputHeight = ComputeConv2DOutputSize(inputHeight, filterHeight, padTop, padBottom,
+                                                   strideHeight, dilationHeight);
+            outputWidth = ComputeConv2DOutputSize(inputWidth, filterWidth, padLeft, padRight,
+                                                  strideWidth, dilationWidth);
+        } else {
+            outputHeight = ceil(inputHeight / strideHeight);
+            outputWidth = ceil(inputWidth / strideWidth);
+            size_t padAlongHeight =
+                std::max(size_t(0), (outputHeight - 1) * strideHeight + filterHeight - inputHeight);
+            size_t padAlongWidth =
+                std::max(size_t(0), (outputWidth - 1) * strideWidth + filterWidth - inputWidth);
+            if (options->autoPad == ml::AutoPad::SameUpper) {
+                padTop = floor(padAlongHeight / 2);
+                padBottom = padAlongHeight - padTop;
+                padLeft = floor(padAlongWidth / 2);
+                padRight = padAlongWidth - padLeft;
+            } else {
+                padBottom = floor(padAlongHeight / 2);
+                padTop = padAlongHeight - padBottom;
+                padRight = floor(padAlongWidth / 2);
+                padLeft = padAlongWidth - padRight;
+            }
         }
 
         const float* bias = nullptr;
@@ -633,10 +700,6 @@ namespace webnn_native { namespace xnnpack {
             outputInfo = mOperandInfoMap.at(conv2d);
         }
         outputInfo->dataType = inputInfo->dataType;
-        size_t outputHeight = ComputeConv2DOutputSize(inputHeight, filterHeight, padTop, padBottom,
-                                                      strideHeight, dilationHeight);
-        size_t outputWidth = ComputeConv2DOutputSize(inputWidth, filterWidth, padLeft, padRight,
-                                                     strideWidth, dilationWidth);
         size_t batchSize = inputInfo->dims[0];
         outputInfo->dims = {batchSize, outputHeight, outputWidth, outputChannels};
         mOutputs.push_back(outputInfo);
@@ -658,10 +721,26 @@ namespace webnn_native { namespace xnnpack {
         return;
     }
 
+    void Graph::CompileSyncImpl() {
+        return;
+    }
+
+    MLComputeGraphStatus Graph::ComputeSyncImpl(NamedInputsBase* inputs,
+                                                NamedOutputsBase* outputs) {
+        return this->GenericComputeImpl(inputs, nullptr, nullptr, outputs);
+    }
+
     void Graph::ComputeImpl(NamedInputsBase* inputs,
                             MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
+        this->GenericComputeImpl(inputs, callback, userdata, outputs);
+    }
+
+    MLComputeGraphStatus Graph::GenericComputeImpl(NamedInputsBase* inputs,
+                                                   MLComputeGraphCallback callback,
+                                                   void* userdata,
+                                                   NamedOutputsBase* outputs) {
         std::vector<const void*> inputBuffers(mInputs.size(), nullptr);
         for (size_t i = 0; i < mInputs.size(); ++i) {
             if (mInputs[i]->opType == OperandType::CONSTANT) {
@@ -670,8 +749,7 @@ namespace webnn_native { namespace xnnpack {
         }
         for (auto& input : inputs->GetRecords()) {
             if (mExternalInputs.find(input.first) == mExternalInputs.end()) {
-                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
-                return;
+                COMPLAIN_AND_CALLBACK("Invalid parameters.");
             }
             size_t index = mExternalInputs.at(input.first);
             inputBuffers[index] = input.second->buffer;
@@ -721,8 +799,7 @@ namespace webnn_native { namespace xnnpack {
             mXnnOperatorType == XnnOpType::max_pooling2d_nhwc_f32) {
             std::vector<size_t> inputDims = mInputs[0]->dims;
             if (!inputBuffers[0] || !outputBuffers[0]) {
-                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
-                return;
+                COMPLAIN_AND_CALLBACK("Invalid parameters.");
             }
             const float* input = reinterpret_cast<const float*>(inputBuffers[0]);
             float* output = reinterpret_cast<float*>(outputBuffers[0]);
@@ -747,8 +824,7 @@ namespace webnn_native { namespace xnnpack {
             size_t batchSize = std::accumulate(outputInfo->dims.begin(), outputInfo->dims.end(), 1,
                                                std::multiplies<size_t>());
             if (!inputBuffers[0] || !outputBuffers[0]) {
-                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
-                return;
+                COMPLAIN_AND_CALLBACK("Invalid parameters.");
             }
             const float* input = reinterpret_cast<const float*>(inputBuffers[0]);
             float* output = reinterpret_cast<float*>(outputBuffers[0]);
@@ -760,8 +836,7 @@ namespace webnn_native { namespace xnnpack {
             std::vector<size_t> dims0 = mInputs[0]->dims;
             std::vector<size_t> dims1 = mInputs[1]->dims;
             if (!inputBuffers[0] || !inputBuffers[1] || !outputBuffers[0]) {
-                callback(MLComputeGraphStatus_Error, nullptr, "Invalid parameters.", userdata);
-                return;
+                COMPLAIN_AND_CALLBACK("Invalid parameters.");
             }
             const float* input0 = reinterpret_cast<const float*>(inputBuffers[0]);
             const float* input1 = reinterpret_cast<const float*>(inputBuffers[1]);
@@ -780,15 +855,17 @@ namespace webnn_native { namespace xnnpack {
                                                        output, GetThreadpool()));
             }
         } else {
-            callback(MLComputeGraphStatus_Error, nullptr, "The operator is not supported.",
-                     userdata);
-            return;
+            COMPLAIN_AND_CALLBACK("The operator is not supported.");
         }
 
         CALLBACK_TRY(xnn_run_operator(mXnnOperator, GetThreadpool()));
 
-        callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
-                 nullptr, userdata);
+        if (callback) {
+            callback(MLComputeGraphStatus_Success,
+                     reinterpret_cast<MLNamedResults>(results.Detach()), nullptr, userdata);
+        }
+
+        return MLComputeGraphStatus_Success;
     }
 
 }}  // namespace webnn_native::xnnpack

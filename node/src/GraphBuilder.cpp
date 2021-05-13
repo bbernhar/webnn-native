@@ -204,6 +204,22 @@ namespace node {
         return deferred.Promise();
     }
 
+    Napi::Value GraphBuilder::BuildSync(const Napi::CallbackInfo& info) {
+        // MLGraph BuildSync(NamedOperands outputs);
+        WEBNN_NODE_ASSERT(info.Length() == 1, "The number of arguments is invalid.");
+        ml::NamedOperands namedOperands;
+        std::vector<std::string> names;
+        WEBNN_NODE_ASSERT(GetNamedOperands(info[0], namedOperands, names),
+                          "The outputs parameter is invalid.");
+        ml::Graph graph = mImpl.BuildSync(namedOperands);
+        WEBNN_NODE_ASSERT(graph != nullptr, "Failed to build graph.");
+        Napi::Object object = node::Graph::constructor.New({});
+        node::Graph* jsGraph = Napi::ObjectWrap<node::Graph>::Unwrap(object);
+        jsGraph->mImpl = graph;
+        jsGraph->mOutputNames = names;
+        return object;
+    }
+
     Napi::Object GraphBuilder::Initialize(Napi::Env env, Napi::Object exports) {
         Napi::HandleScope scope(env);
         Napi::Function func = DefineClass(
@@ -225,7 +241,8 @@ namespace node {
              InstanceMethod("reshape", &GraphBuilder::Reshape, napi_enumerable),
              InstanceMethod("softmax", &GraphBuilder::Softmax, napi_enumerable),
              InstanceMethod("transpose", &GraphBuilder::Transpose, napi_enumerable),
-             InstanceMethod("build", &GraphBuilder::Build, napi_enumerable)});
+             InstanceMethod("build", &GraphBuilder::Build, napi_enumerable),
+             InstanceMethod("buildSync", &GraphBuilder::BuildSync, napi_enumerable)});
         constructor = Napi::Persistent(func);
         constructor.SuppressDestruct();
         exports.Set("MLGraphBuilder", func);

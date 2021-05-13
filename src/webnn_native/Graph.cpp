@@ -31,6 +31,11 @@ namespace webnn_native {
         ComputeImpl(inputs, callback, userdata, outputs);
     }
 
+    MLComputeGraphStatus GraphBase::ComputeSync(NamedInputsBase* inputs,
+                                                NamedOutputsBase* outputs) {
+        return ComputeSyncImpl(inputs, outputs);
+    }
+
     MaybeError GraphBase::AddConstant(const op::Constant* constant) {
         return DAWN_UNIMPLEMENTED_ERROR("AddConstant");
     }
@@ -93,6 +98,19 @@ namespace webnn_native {
 
     void GraphBase::Compile(BuildGraphCallbackDelgate delgate) {
         CompileImpl(delgate);
+    }
+
+    void GraphBase::CompileSync() {
+        CompileSyncImpl();
+    }
+
+    void GraphBase::CompileSyncImpl() {
+        UNREACHABLE();
+    }
+
+    MLComputeGraphStatus GraphBase::ComputeSyncImpl(NamedInputsBase* inputs,
+                                                    NamedOutputsBase* outputs) {
+        UNREACHABLE();
     }
 
 }  // namespace webnn_native
