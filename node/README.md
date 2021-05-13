@@ -26,15 +26,15 @@ You need to build WebNN native as a C/C++ library by following [WebNN-native REA
 
 ### Install Node.js modules
 
-To install node-gyp and other Node.js modules, please execute the following command:
+Install node-gyp and other Node.js modules that are required to build the Node.js addon. The `webnn_native_lib_path` must be configured so that WebNN native header files and libraries can be found. The path must be a relative path to the `node` folder. For example, execute the following command:
 
 ```shell script
-> npm install
+> npm install --webnn_native_lib_path="../out/Release"
 ```
 
 ### Build
 
-The `webnn_native_lib_path` must be configured so that WebNN native header files and libaries can be found when building the node addon. The path should be a relative path to the `node` folder. For example,
+The Node.js addon can also be built after install. For example, execute the following command:
 
 ```shell script
 > npm run build --webnn_native_lib_path="../out/Release"
