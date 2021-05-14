@@ -71,21 +71,6 @@ source_set("webnn_native_headers") {
   ]
 }
 
-if (webnn_enable_onednn) {
-  dnnl_version = "2.1.0"
-
-  if (is_win) {
-    dnnl_os = "win"
-    dnnl_omp = "vcomp"
-    dnnl_libs = [ "dnnl.lib" ]
-  } else if (is_linux) {
-    dnnl_os = "lnx"
-    dnnl_omp = "gomp"
-    dnnl_libs = [ "dnnl" ]
-  }
-  dnnl_path = "//third_party/dnnl_${dnnl_os}_${dnnl_version}_cpu_${dnnl_omp}"
-}
-
 # The meat of the compilation for webnn_native so that we can cheaply have
 # shared_library / static_library versions of it. It compiles all the files
 # except those that define exported symbols.
@@ -234,9 +219,14 @@ source_set("webnn_native_sources") {
       "onednn/GraphDNNL.h",
     ]
 
-    include_dirs = [ "${dnnl_path}/include" ]
-    lib_dirs = [ "${dnnl_path}/lib" ]
-    libs = dnnl_libs
+    include_dirs = [
+      "//third_party/oneDNN/include",
+      "//third_party/oneDNN/build/include",
+    ]
+
+    lib_dirs = [ "//third_party/oneDNN/build/src" ]
+
+    libs = [ "dnnl" ]
   }
 
   if (webnn_enable_xnnpack) {
@@ -328,15 +318,14 @@ if (webnn_enable_dml) {
 }
 
 if (webnn_enable_onednn) {
+  dnnl_dll_path = "//third_party/oneDNN/build/src"
   if (is_win) {
-    dnnl_dll_path = "${dnnl_path}/bin/"
     dnnl_dlls = [ "${dnnl_dll_path}/dnnl.dll" ]
   } else if (is_linux) {
-    dnnl_dll_path = "${dnnl_path}/lib/"
     dnnl_dlls = [
       "${dnnl_dll_path}/libdnnl.so",
       "${dnnl_dll_path}/libdnnl.so.2",
-      "${dnnl_dll_path}/libdnnl.so.2.1",
+      "${dnnl_dll_path}/libdnnl.so.2.2",
     ]
   }
   copy("copy_dnnl_dll") {
