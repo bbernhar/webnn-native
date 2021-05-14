@@ -119,20 +119,20 @@ Options:
 [build_webnn](./build_webnn) script is for build on Linux platform
 [build_webnn.bat](./build_webnn.bat) script is for build on Windows platform.
 
-### Sync dependencies
-```sh
-> ./build_webnn sync
-```
-```sh
-> build_webnn.bat sync
-```
-
 ### Fetch code
 ```sh
 > ./build_webnn pull
 ```
 ```sh
 > build_webnn.bat pull
+```
+
+### Sync dependencies
+```sh
+> ./build_webnn sync
+```
+```sh
+> build_webnn.bat sync
 ```
 
 ### Build
@@ -151,6 +151,7 @@ Options:
 ```sh
 > build_webnn.bat "--backend=[null|openvino|dml|onednn|xnnpack]"
 ```
+
 ##### Or build with configured arguments from configurations in specified config json file.
 ```sh
 > ./build_webnn --config=<path>
@@ -165,6 +166,15 @@ Options:
 ```
 ```sh
 > build_webnn.bat "--backend=[null|openvino|dml|onednn|xnnpack] --config=<path>"
+```
+
+### Build node addon
+Notice: To build node addon is require build webnn native firstly.
+```sh
+> ./build_webnn build-node
+```
+```sh
+> build_webnn.bat build-node
 ```
 
 ### Package
@@ -191,7 +201,7 @@ Options:
 > build_webnn.bat notify
 ```
 
-### All above commands in one command
+### All above commands exclude 'Build node addon' in one command
 The usage of backend and config arguments are same with above **Build** command
 
 ```sh
@@ -199,6 +209,16 @@ The usage of backend and config arguments are same with above **Build** command
 ```
 ```sh
 > build_webnn.bat all "--backend=[null|openvino|dml|onednn|xnnpack] --config=<path>"
+```
+
+### All above commands involve 'Build node addon' in one command
+The usage of backend and config arguments are same with above **Build** command
+
+```sh
+> ./build_webnn all-node --backend=[null|openvino|dml|onednn|xnnpack] --config=<path>
+```
+```sh
+> build_webnn.bat all-node "--backend=[null|openvino|dml|onednn|xnnpack] --config=<path>"
 ```
 
 ## Log file
