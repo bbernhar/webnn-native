@@ -513,8 +513,8 @@ namespace webnn_native { namespace onednn {
         std::vector<dnnl_dim_t> inputDims;
         const Conv2dOptions* options = conv2d->GetOptions();
         const dnnl_memory_desc_t* actualInputMemoryDesc;
+        dnnl_memory_desc_t transposedInputMemoryDesc;
         if (options->inputLayout == ml::InputOperandLayout::Nhwc) {
-            dnnl_memory_desc_t transposedInputMemoryDesc;
             const int permute[] = {0, 2, 3, 1};
             DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedInputMemoryDesc, inputMemoryDesc,
                                                    permute));
@@ -538,8 +538,8 @@ namespace webnn_native { namespace onednn {
         DAWN_TRY(GetMemoryDesc(filterMemory, &filterMemoryDesc));
         std::vector<dnnl_dim_t> filterDims;
         const dnnl_memory_desc_t* actualFilterMemoryDesc;
+        dnnl_memory_desc_t transposedFilterMemoryDesc;
         if (options->filterLayout == ml::FilterOperandLayout::Hwio) {
-            dnnl_memory_desc_t transposedFilterMemoryDesc;
             const int permute[] = {2, 3, 1, 0};
             DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedFilterMemoryDesc, filterMemoryDesc,
                                                    permute));
@@ -553,7 +553,6 @@ namespace webnn_native { namespace onednn {
 
             actualFilterMemoryDesc = &transposedFilterMemoryDesc;
         } else if (options->filterLayout == ml::FilterOperandLayout::Ohwi) {
-            dnnl_memory_desc_t transposedFilterMemoryDesc;
             const int permute[] = {0, 2, 3, 1};
             DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedFilterMemoryDesc, filterMemoryDesc,
                                                    permute));
@@ -564,7 +563,6 @@ namespace webnn_native { namespace onednn {
                                                   dnnl_ohwi));
             actualFilterMemoryDesc = &transposedFilterMemoryDesc;
         } else if (options->filterLayout == ml::FilterOperandLayout::Ihwo) {
-            dnnl_memory_desc_t transposedFilterMemoryDesc;
             const int permute[] = {1, 2, 3, 0};
             DAWN_TRY(dnnl_memory_desc_permute_axes(&transposedFilterMemoryDesc, filterMemoryDesc,
                                                    permute));
