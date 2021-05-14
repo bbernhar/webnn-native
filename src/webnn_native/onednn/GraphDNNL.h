@@ -24,6 +24,7 @@
 #include "webnn_native/Operand.h"
 #include "webnn_native/onednn/ContextDNNL.h"
 #include "webnn_native/ops/Binary.h"
+#include "webnn_native/ops/Clamp.h"
 #include "webnn_native/ops/Constant.h"
 #include "webnn_native/ops/Conv2d.h"
 #include "webnn_native/ops/Input.h"
@@ -48,6 +49,7 @@ namespace webnn_native { namespace onednn {
         virtual MaybeError AddReshape(const op::Reshape* relu) override;
         virtual MaybeError AddTranspose(const op::Transpose* transpose) override;
         virtual MaybeError AddUnary(const op::Unary* unary) override;
+        virtual MaybeError AddClamp(const op::Clamp* clamp) override;
         virtual MaybeError Finish() override;
 
       private:

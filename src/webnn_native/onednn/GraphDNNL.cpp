@@ -121,17 +121,25 @@ namespace webnn_native { namespace onednn {
                                                uint32_t dimensionsCount,
                                                std::vector<dnnl_dim_t>& dnnlDims,
                                                dnnl_format_tag_t& tag) {
-            if (dimensionsCount < 1 || dimensionsCount > DNNL_MAX_NDIMS) {
+            if (dimensionsCount > DNNL_MAX_NDIMS) {
                 return dnnl_invalid_arguments;
             } else {
-                dnnlDims.resize(dimensionsCount);
-                for (uint32_t i = 0; i < dimensionsCount; ++i) {
-                    int32_t d = dimensions[i];
-                    if (d < 0) {
-                        dawn::ErrorLog() << "oneDNN doesn't support the negative dimension value";
-                        return dnnl_invalid_arguments;
+                if (dimensionsCount > 0) {
+                    dnnlDims.resize(dimensionsCount);
+                    for (uint32_t i = 0; i < dimensionsCount; ++i) {
+                        int32_t d = dimensions[i];
+                        if (d < 0) {
+                            dawn::ErrorLog()
+                                << "oneDNN doesn't support the negative dimension value";
+                            return dnnl_invalid_arguments;
+                        }
+                        dnnlDims[i] = d;
                     }
-                    dnnlDims[i] = d;
+                } else {
+                    // for scalar constant
+                    dimensionsCount = 1;
+                    dnnlDims.resize(dimensionsCount);
+                    dnnlDims[0] = 1;
                 }
                 const dnnl_format_tag_t tags[12] = {
                     dnnl_a,            ///< plain 1D tensor
@@ -925,6 +933,134 @@ namespace webnn_native { namespace onednn {
             {primitive, {{DNNL_ARG_SRC, inputMemory}, {DNNL_ARG_DST, outputMemory}}});
         mMemories.push_back(outputMemory);
         mOperandMemoryMap.insert(std::make_pair(unary, outputMemory));
+        return {};
+    }
+
+    MaybeError Graph::AddClamp(const op::Clamp* clamp) {
+        auto inputsOperand = clamp->Inputs();
+        DAWN_ASSERT(inputsOperand.size() == 1 || inputsOperand.size() == 2 ||
+                    inputsOperand.size() == 3);
+        const OperandBase* inputOperand = inputsOperand[0].Get();
+        DAWN_ASSERT(mOperandMemoryMap.find(inputOperand) != mOperandMemoryMap.end());
+        dnnl_memory_t inputMemory = mOperandMemoryMap.at(inputOperand);
+        const dnnl_memory_desc_t* inputMemoryDesc;
+        DAWN_TRY(GetMemoryDesc(inputMemory, &inputMemoryDesc));
+        std::vector<dnnl_dim_t> inputDims(inputMemoryDesc->dims,
+                                          inputMemoryDesc->dims + inputMemoryDesc->ndims);
+
+        const ClampOptions* options = clamp->GetOptions();
+        dnnl_memory_t tempMemory;
+        std::vector<dnnl_dim_t> tempDims;
+        const dnnl_memory_desc_t* tempMemoryDesc;
+        // compare input with minValue
+        if (options->minValue != nullptr) {
+            const OperandBase* minOperand = inputsOperand[1].Get();
+            DAWN_ASSERT(mOperandMemoryMap.find(inputsOperand[1].Get()) != mOperandMemoryMap.end());
+            dnnl_memory_t minMemory = mOperandMemoryMap.at(minOperand);
+            const dnnl_memory_desc_t* minMemoryDesc;
+            DAWN_TRY(GetMemoryDesc(minMemory, &minMemoryDesc));
+            std::vector<dnnl_dim_t> minDims(minMemoryDesc->dims,
+                                            minMemoryDesc->dims + minMemoryDesc->ndims);
+
+            bool inputBroadcasted = false;
+            bool minBroadcasted = false;
+            DAWN_TRY(BroadcastDimensions(inputDims, minDims, tempDims, inputBroadcasted,
+                                         minBroadcasted, 0));
+            dnnl_memory_desc_t minBroadcastedMemoryDesc;
+            if (minBroadcasted) {
+                DAWN_TRY(dnnl_memory_desc_reshape(&minBroadcastedMemoryDesc, minMemoryDesc,
+                                                  minDims.size(), minDims.data()));
+                minMemoryDesc = &minBroadcastedMemoryDesc;
+            }
+
+            dnnl_memory_desc_t tempInitDesc;
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&tempInitDesc, tempDims.size(), tempDims.data(),
+                                                  inputMemoryDesc->data_type, dnnl_format_tag_any));
+
+            dnnl_primitive_desc_t primitiveDesc;
+            dnnl_alg_kind_t algKind = dnnl_binary_max;
+            dnnl_binary_desc_t binaryDesc;
+            DAWN_TRY(dnnl_binary_desc_init(&binaryDesc, algKind, inputMemoryDesc, minMemoryDesc,
+                                           &tempInitDesc));
+            DAWN_TRY(
+                dnnl_primitive_desc_create(&primitiveDesc, &binaryDesc, NULL, GetEngine(), NULL));
+
+            dnnl_primitive_t primitive;
+            tempMemoryDesc = dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
+            DAWN_TRY(
+                dnnl_memory_create(&tempMemory, tempMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+            DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
+            DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
+            std::vector<dnnl_exec_arg_t> args;
+            args = {{DNNL_ARG_SRC_0, inputMemory},
+                    {DNNL_ARG_SRC_1, minMemory},
+                    {DNNL_ARG_DST, tempMemory}};
+            mOperations.push_back({primitive, args});
+            mMemories.push_back(tempMemory);
+        } else {
+            tempMemory = inputMemory;
+            tempDims = inputDims;
+            tempMemoryDesc = inputMemoryDesc;
+        }
+
+        dnnl_memory_t outMemory;
+        std::vector<dnnl_dim_t> outDims;
+        const dnnl_memory_desc_t* outMemoryDesc;
+        // compare temp with maxValue
+        if (options->maxValue != nullptr) {
+            auto index = options->minValue == nullptr ? 1 : 2;
+            const OperandBase* maxOperand = inputsOperand[index].Get();
+            DAWN_ASSERT(mOperandMemoryMap.find(inputsOperand[index].Get()) !=
+                        mOperandMemoryMap.end());
+            dnnl_memory_t maxMemory = mOperandMemoryMap.at(maxOperand);
+            const dnnl_memory_desc_t* maxMemoryDesc;
+            DAWN_TRY(GetMemoryDesc(maxMemory, &maxMemoryDesc));
+            std::vector<dnnl_dim_t> maxDims(maxMemoryDesc->dims,
+                                            maxMemoryDesc->dims + maxMemoryDesc->ndims);
+
+            std::vector<dnnl_dim_t> outDims;
+            bool tempBroadcasted = false;
+            bool maxBroadcasted = false;
+            DAWN_TRY(BroadcastDimensions(tempDims, maxDims, outDims, tempBroadcasted,
+                                         maxBroadcasted, 0));
+            dnnl_memory_desc_t maxBroadcastedMemoryDesc;
+            if (maxBroadcasted) {
+                DAWN_TRY(dnnl_memory_desc_reshape(&maxBroadcastedMemoryDesc, maxMemoryDesc,
+                                                  maxDims.size(), maxDims.data()));
+                maxMemoryDesc = &maxBroadcastedMemoryDesc;
+            }
+
+            dnnl_memory_desc_t outInitDesc;
+            DAWN_TRY(dnnl_memory_desc_init_by_tag(&outInitDesc, outDims.size(), outDims.data(),
+                                                  inputMemoryDesc->data_type, dnnl_format_tag_any));
+
+            dnnl_primitive_desc_t primitiveDesc;
+            dnnl_alg_kind_t algKind = dnnl_binary_min;
+            dnnl_binary_desc_t binaryDesc;
+            DAWN_TRY(dnnl_binary_desc_init(&binaryDesc, algKind, tempMemoryDesc, maxMemoryDesc,
+                                           &outInitDesc));
+            DAWN_TRY(
+                dnnl_primitive_desc_create(&primitiveDesc, &binaryDesc, NULL, GetEngine(), NULL));
+
+            dnnl_primitive_t primitive;
+            outMemoryDesc = dnnl_primitive_desc_query_md(primitiveDesc, dnnl_query_dst_md, 0);
+            DAWN_TRY(
+                dnnl_memory_create(&outMemory, outMemoryDesc, GetEngine(), DNNL_MEMORY_ALLOCATE));
+            DAWN_TRY(dnnl_primitive_create(&primitive, primitiveDesc));
+            DAWN_TRY(dnnl_primitive_desc_destroy(primitiveDesc));
+            std::vector<dnnl_exec_arg_t> args;
+            args = {{DNNL_ARG_SRC_0, tempMemory},
+                    {DNNL_ARG_SRC_1, maxMemory},
+                    {DNNL_ARG_DST, outMemory}};
+            mOperations.push_back({primitive, args});
+            mMemories.push_back(outMemory);
+        } else {
+            outMemory = tempMemory;
+            outDims = tempDims;
+            outMemoryDesc = tempMemoryDesc;
+        }
+        mOperandMemoryMap.insert(std::make_pair(clamp, outMemory));
+
         return {};
     }
 
