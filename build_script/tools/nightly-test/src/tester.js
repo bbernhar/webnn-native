@@ -180,6 +180,30 @@ class Tester {
     }
   }
 
+  async runTestsByNode() {
+    await utils.childCommand(
+        this.logger_, 'npm', ['install'], path.join(this.unzipPath_, 'node'));
+
+    if (this.config_.device.os === 'linux') {
+      process.env.LD_LIBRARY_PATH =
+          this.unzipPath_ + ':' + process.env.LD_LIBRARY_PATH;
+    } else if (this.config_.device.os === 'win') {
+      process.env.PATH = this.unzipPath_ + ';' + process.env.PATH;
+    }
+
+    utils.updatePackageJsonFile(
+        path.join(this.unzipPath_, 'node', 'package.json'));
+    const result = {output: ''};
+    try {
+      await utils.childCommand(
+          this.logger_, 'npm', ['test'], path.join(this.unzipPath_, 'node'),
+          result, true);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'NodeTest');
+    } catch (e) {
+      this.logger_.error('Error: Fail to run node test, please check it.');
+    }
+  }
   /**
    * Run build.
    * @param {String} backend - value: 'null', 'openvino', 'dml', 'onednn',
@@ -209,27 +233,24 @@ class Tester {
         `webnn-${backend}-${this.config_.device.os}-` +
         `${this.config_.device.cpu}-${this.config_.targetCommitId}_` +
         `${this.config_.device.name}.csv`);
-    try {
-      if (backend === 'null') {
-        await this.runUnitTests();
-      } else {
-        if (backend === 'onednn') {
-          process.env.LD_LIBRARY_PATH = this.unzipPath_;
-        }
-        await this.runEnd2EndTests();
-        await this.runLeNetExample();
-        await this.runSqueezeNetExample();
-        await this.runMobileNetv2Example();
+
+    if (backend === 'null') {
+      await this.runUnitTests();
+    } else {
+      if (backend === 'onednn') {
+        process.env.LD_LIBRARY_PATH = this.unzipPath_;
       }
-      // Upload results CSV file onto Reports Server
-      await utils.uploadResults(
-          this.logger_, this.resultsCSV_, this.config_.userHost,
-          this.config_.remoteDir, this.config_.resultsDir);
-      fs.removeSync(this.unzipPath_);
-    } catch (error) {
-      fs.removeSync(this.unzipPath_);
-      throw error;
+      await this.runEnd2EndTests();
+      await this.runLeNetExample();
+      await this.runSqueezeNetExample();
+      await this.runMobileNetv2Example();
+      await this.runTestsByNode();
     }
+    // Upload results CSV file onto Reports Server
+    await utils.uploadResults(
+        this.logger_, this.resultsCSV_, this.config_.userHost,
+        this.config_.remoteDir, this.config_.resultsDir);
+    fs.removeSync(this.unzipPath_);
   }
 
   /** Upload log file. */

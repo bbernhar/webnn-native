@@ -67,15 +67,28 @@ const utils = {
   },
 
   /**
+   * Update package.json for collecting test node results
+   * @param {String} fileName - package.json file path
+   */
+  updatePackageJsonFile(fileName) {
+    fs.accessSync(fileName);
+    const content = JSON.parse(fs.readFileSync(fileName, 'utf8'));
+    content.scripts.test =
+        content.scripts.test.replace('mocha', 'mocha --reporter json');
+    fs.writeJsonSync(fileName, content, {spaces: 2});
+  },
+
+  /**
    * Execute command.
    * @param {object} logger - The logger.
    * @param {String} cmd - The command string.
    * @param {array} args - The arguments array.
    * @param {String} cwd - The path string.
    * @param {object} result - The return value.
+   * @param {Boolean} node - Boolean value for test node.
    * @return {object} child_process.spawn promise.
    */
-  childCommand(logger, cmd, args, cwd, result) {
+  childCommand(logger, cmd, args, cwd, result, node = false) {
     logger.info(`Execute commad: ${cmd} ${[...args].join(' ')}`);
     return new Promise((resolve, reject) => {
       const child = spawn(cmd, [...args], {cwd: cwd, shell: true});
@@ -90,7 +103,11 @@ const utils = {
       child.stderr.on('data', (data) => {
         if (result !== undefined) {
           logger.info(data.toString());
-          result.output += data.toString();
+          // For node test, the error messages have been involved in json ouput,
+          // Here no need to dobule record error message
+          if (!node) {
+            result.output += data.toString();
+          }
         }
       });
 
@@ -111,7 +128,36 @@ const utils = {
   async saveResultsCSV(logger, csvFile, resultsStr, component, example) {
     function readyResultsData(dataStr, component, example) {
       const resultsData = [];
-      if (component !== 'Examples') {
+      if (component === 'NodeTest') {
+        let status = 'PASS';
+        let msg = '';
+        const resultStr = dataStr.split('\n').slice(3).join('');
+        const resultJson = JSON.parse(resultStr);
+        for (const item in resultJson.tests) {
+          if (item) {
+            const tcResult = resultJson.tests[item];
+            const tcNameNode = tcResult.title;
+            const componentNode = component + ' / ' +
+                tcResult.fullTitle.slice(0,
+                    tcResult.fullTitle.lastIndexOf(tcNameNode));
+            if (tcResult.duration !== undefined) {
+              const errorInfo = tcResult.err;
+              if (errorInfo !== undefined &&
+                   Object.keys(errorInfo).length > 0) {
+                status = 'FAIL';
+                msg = errorInfo.stack;
+              } else {
+                status = 'PASS';
+                msg = '';
+              }
+            } else {
+              status = 'SKIP';
+              msg = '';
+            }
+            resultsData.push([componentNode, tcNameNode, status, msg]);
+          }
+        }
+      } else if (component !== 'Examples') {
         const dataArray = dataStr.split('\n');
         let tcBlockFlag = false;
         let tcErrorStartIndex;

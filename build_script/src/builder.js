@@ -143,7 +143,7 @@ class Builder {
         break;
       case 'all':
         await this.actionPull();
-        await this.actionSync();        
+        await this.actionSync();
         await this.actionBuild();
         await this.actionPackage();
         await this.actionUpload();
