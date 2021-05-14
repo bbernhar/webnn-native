@@ -224,9 +224,19 @@ source_set("webnn_native_sources") {
       "//third_party/oneDNN/build/include",
     ]
 
-    lib_dirs = [ "//third_party/oneDNN/build/src" ]
+    if (is_win) {
+      if (is_debug) {
+        lib_dirs = [ "//third_party/oneDNN/build/src/Debug" ]
+      } else {
+        lib_dirs = [ "//third_party/oneDNN/build/src/Release" ]
+      }
+      libs = [ "dnnl.lib" ]
+    }
 
-    libs = [ "dnnl" ]
+    if (is_linux) {
+      lib_dirs = [ "//third_party/oneDNN/build/src" ]
+      libs = [ "dnnl" ]
+    }
   }
 
   if (webnn_enable_xnnpack) {
@@ -318,10 +328,15 @@ if (webnn_enable_dml) {
 }
 
 if (webnn_enable_onednn) {
-  dnnl_dll_path = "//third_party/oneDNN/build/src"
   if (is_win) {
+    if (is_debug) {
+      dnnl_dll_path = "//third_party/oneDNN/build/src/Debug"
+    } else {
+      dnnl_dll_path = "//third_party/oneDNN/build/src/Release"
+    }
     dnnl_dlls = [ "${dnnl_dll_path}/dnnl.dll" ]
   } else if (is_linux) {
+    dnnl_dll_path = "//third_party/oneDNN/build/src"
     dnnl_dlls = [
       "${dnnl_dll_path}/libdnnl.so",
       "${dnnl_dll_path}/libdnnl.so.2",
