@@ -37,8 +37,6 @@ void ShowUsage() {
 }
 
 int main(int argc, const char* argv[]) {
-    DumpMemoryLeaks();
-
     std::string imagePath, modelPath;
     int nIter = 1;
     for (int i = 1; i < argc; ++i) {

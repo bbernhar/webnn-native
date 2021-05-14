@@ -38,8 +38,6 @@ void ShowUsage() {
 }
 
 int main(int argc, const char* argv[]) {
-    DumpMemoryLeaks();
-
     std::string imagePath, weightsPath, layout = "nchw";
     int nIter = 1;
     for (int i = 1; i < argc; ++i) {

@@ -31,8 +31,6 @@ uint32_t product(const std::vector<int32_t>& dims);
 
 ml::Context CreateCppContext();
 
-void DumpMemoryLeaks();
-
 bool Expected(float output, float expected);
 
 namespace utils {
