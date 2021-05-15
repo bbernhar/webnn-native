@@ -28,10 +28,6 @@
 #include "common/Assert.h"
 #include "common/Log.h"
 
-#if defined(_WIN32)
-#    include <crtdbg.h>
-#endif
-
 uint32_t product(const std::vector<int32_t>& dims) {
     uint32_t prod = 1;
     for (size_t i = 0; i < dims.size(); ++i)
@@ -47,21 +43,6 @@ ml::Context CreateCppContext() {
         return ml::Context::Acquire(context);
     }
     return ml::Context();
-}
-
-void DumpMemoryLeaks() {
-#if defined(_WIN32) && defined(_DEBUG)
-    // Send all reports to STDOUT.
-    _CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_FILE);
-    _CrtSetReportFile(_CRT_WARN, _CRTDBG_FILE_STDOUT);
-    _CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE);
-    _CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDOUT);
-    _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
-    _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDOUT);
-    // Perform automatic leak checking at program exit through a call to _CrtDumpMemoryLeaks and
-    // generate an error report if the application failed to free all the memory it allocated.
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
 }
 
 bool Expected(float output, float expected) {
