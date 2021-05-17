@@ -1,7 +1,7 @@
 {
   "name": "webnn_electron",
   "version": "0.0.1",
-  "description": "An Electon.js example for webnn-native",
+  "description": "An Electon.js example of LeNet using webnn-native",
   "main": "main.js",
   "scripts": {
     "start": "electron ."
