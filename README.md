@@ -18,7 +18,8 @@ WebNN-native uses the code of other open source projects:
 
  * The code generator and infrastructure code of [Dawn](https://dawn.googlesource.com/dawn/) project.
  * The DirectMLX and device wrapper of [DirectML](https://github.com/microsoft/DirectML) project.
- * The [XNNPACK](https://github.com/google/XNNPACK)
+ * The [XNNPACK](https://github.com/google/XNNPACK) project.
+ * The [oneDNN](https://github.com/oneapi-src/oneDNN) project.
 
 ## Build and Run
 
@@ -52,13 +53,14 @@ Generate build files using `gn args out/Debug` or `gn args out/Release`.
 
 A text editor will appear asking build options, the most common option is `is_debug=true/false`; otherwise `gn args out/Release --list` shows all the possible options.
 
-To build with DirectML backend, set build option `webnn_enable_dml=true`.
+To build with a backend, please set the corresponding option from following table.
 
-To build with OpenVINO backend, set build option `webnn_enable_openvino=true`.
-
-To build with oneDNN backend, set build option `webnn_enable_onednn=true`.
-
-To build with XNNPACK backend, set build option `webnn_enable_xnnpack=true`.
+| Backend | Option |
+|---------|--------------|
+| DirectML | `webnn_enable_dml=true` |
+| OpenVINO | `webnn_enable_openvino=true` |
+| XNNPACK | `webnn_enable_xnnpack=true` |
+| oneDNN | `webnn_enable_onednn=true` |
 
 ### Build
 
@@ -66,6 +68,7 @@ Then use `ninja -C out/Release` or `ninja -C out/Debug` to build WebNN-native.
 
 **Notes**
  * To build with XNNPACK backend, please build XNNPACK first, e.g. by [`XNNPACK/scripts/build-local.sh`](https://github.com/google/XNNPACK/blob/master/scripts/build-local.sh).
+ * To build with oneDNN backend, please build oneDNN first by following the [build from source instructions](https://oneapi-src.github.io/oneDNN/dev_guide_build.html).
 
 ### Run tests
 

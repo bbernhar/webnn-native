@@ -16,7 +16,7 @@ third_party/markupsafe/
 third_party/dawn
 third_party/DirectML
 third_party/microsoft.ai.directml*
-third_party/dnnl_*
+third_party/oneDNN
 third_party/XNNPACK
 third_party/stb
 node/third_party/webnn-polyfill
