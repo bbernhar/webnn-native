@@ -80,8 +80,13 @@ const char* dnnl_status2str(dnnl_status_t v) {
     do {                                                                                   \
         std::string message = std::string(what) + std::string(" returns oneDNN error: ") + \
                               std::string(dnnl_status2str(s_));                            \
-        callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);          \
-        return;                                                                            \
+        if (callback) {                                                                    \
+            callback(MLComputeGraphStatus_Error, nullptr, message.c_str(), userdata);      \
+            return MLComputeGraphStatus_Error;                                             \
+        } else {                                                                           \
+            dawn::ErrorLog() << message;                                                   \
+            return MLComputeGraphStatus_Error;                                             \
+        }                                                                                  \
     } while (0)
 
 #define CALLBACK_TRY(f)                               \
@@ -1076,10 +1081,30 @@ namespace webnn_native { namespace onednn {
         delgate(status, this);
     }
 
+    MLBuildGraphStatus Graph::CompileSyncImpl() {
+        MLBuildGraphStatus status =
+            FAILED(dnnl_stream_create(&mStream, GetEngine(), dnnl_stream_default_flags))
+                ? MLBuildGraphStatus_Error
+                : MLBuildGraphStatus_Success;
+        return status;
+    }
+
+    MLComputeGraphStatus Graph::ComputeSyncImpl(NamedInputsBase* inputs,
+                                                NamedOutputsBase* outputs) {
+        return this->GenericComputeImpl(inputs, outputs);
+    }
+
     void Graph::ComputeImpl(NamedInputsBase* inputs,
                             MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
+        this->GenericComputeImpl(inputs, outputs, callback, userdata);
+    }
+
+    MLComputeGraphStatus Graph::GenericComputeImpl(NamedInputsBase* inputs,
+                                                   NamedOutputsBase* outputs,
+                                                   MLComputeGraphCallback callback,
+                                                   void* userdata) {
         for (auto& input : inputs->GetRecords()) {
             dnnl_memory_t inputMemory = mInputMemoryMap.at(input.first);
             CALLBACK_TRY(dnnl_memory_set_data_handle_v2(
@@ -1127,9 +1152,11 @@ namespace webnn_native { namespace onednn {
                 }
             }
         }
-        callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
-                 nullptr, userdata);
-        return;
+        if (callback) {
+            callback(MLComputeGraphStatus_Success,
+                     reinterpret_cast<MLNamedResults>(results.Detach()), nullptr, userdata);
+        }
+        return MLComputeGraphStatus_Success;
     }
 
     dnnl_engine_t Graph::GetEngine() {
