@@ -71,6 +71,7 @@ namespace node {
             {"oihw", ml::FilterOperandLayout::Oihw},
             {"hwio", ml::FilterOperandLayout::Hwio},
             {"ohwi", ml::FilterOperandLayout::Ohwi},
+            {"ihwo", ml::FilterOperandLayout::Ihwo},
         };
         if (!jsValue.IsString()) {
             return false;
