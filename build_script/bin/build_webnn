@@ -37,6 +37,15 @@ program
   });
 
 program
+  .command('build-node')
+  .option('-b, --backend <backend>', 'Build node addon', null)
+  .option('-c, --config <config>', 'Configuration file',
+  'build_script/bot_config.json')
+  .action((options) => {
+    builder.run('build-node', options);
+  });
+
+program
   .command('package')
   .action(() => {
     builder.run('package');
@@ -61,6 +70,15 @@ program
   'build_script/bot_config.json')
   .action((options) => {
     builder.run('all', options);
+  });
+
+program
+  .command('all-node')
+  .option('-b, --backend <backend>', 'Build with target backend and build node addon', null)
+  .option('-c, --config <config>', 'Configuration file',
+  'build_script/bot_config.json')
+  .action((options) => {
+    builder.run('all-node', options);
   });
 
 program.parse();

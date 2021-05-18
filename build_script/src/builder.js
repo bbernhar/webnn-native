@@ -129,6 +129,9 @@ class Builder {
       case 'build':
         await this.actionBuild();
         break;
+      case 'build-node':
+        await this.actionBuildNode();
+        break;
       case 'package':
         await this.actionPackage();
         break;
@@ -139,9 +142,18 @@ class Builder {
         await this.actionNotify();
         break;
       case 'all':
-        await this.actionSync();
         await this.actionPull();
+        await this.actionSync();
         await this.actionBuild();
+        await this.actionPackage();
+        await this.actionUpload();
+        await this.actionNotify();
+        break;
+      case 'all-node':
+        await this.actionPull();
+        await this.actionSync();
+        await this.actionBuild();
+        await this.actionBuildNode();
         await this.actionPackage();
         await this.actionUpload();
         await this.actionNotify();
@@ -239,6 +251,45 @@ class Builder {
           `Failed to run 'ninja -C ${this.outDir_}' command`);
       process.exit(1);
     }
+  }
+
+  /**
+   * Build node addon in node folder.
+   */
+  async actionBuildNode() {
+    if (this.config_.backend === 'null') {
+      this.config_.logger.info('No need to build node addon for null backend');
+      return;
+    }
+
+    this.config_.logger.info('Action build node addon');
+
+    if (!fs.existsSync(this.outDir_)) {
+      this.config_.logger.error(
+          'Please run build webnn native firstly.');
+    }
+
+    const nodeDir = path.join(this.rootDir_, 'node');
+
+    // install
+    await this.childCommand(
+        'npm',
+        ['install',
+          `--webnn_native_lib_path="../out/${this.config_.buildType}"`,
+        ],
+        nodeDir, undefined, true);
+
+    // build
+    await this.childCommand(
+        'npm',
+        ['run',
+          'build',
+          `--webnn_native_lib_path="../out/${this.config_.buildType}"`,
+        ],
+        nodeDir, undefined, true);
+
+    // copy files to out folder for package
+    this.copyTestDataResources('node');
   }
 
   /**
@@ -467,13 +518,20 @@ class Builder {
    * @param {array} args arguments array.
    * @param {String} cwd path string.
    * @param {object} result return value.
+   * @param {Boolean} shell shell option.
    * @return {object} child_process.spawn promise.
    */
-  childCommand(cmd, args, cwd, result) {
+  childCommand(cmd, args, cwd, result, shell = false) {
     return new Promise((resolve, reject) => {
       const cmdFullStr = cmd + ' ' + args.join(' ');
       this.config_.logger.info('Execute command: ' + cmdFullStr);
-      const child = spawn(cmd, [...args], {cwd: cwd});
+      const options = {cwd: cwd};
+
+      if (shell) {
+        options.shell = true;
+      }
+
+      const child = spawn(cmd, [...args], options);
 
       child.stdout.on('data', (data) => {
         if (result) result.changeset = data.toString();
