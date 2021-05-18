@@ -27,6 +27,7 @@ namespace node { namespace op {
 
         std::vector<int32_t> newShape;
         WEBNN_NODE_ASSERT(GetInt32Array(info[1], newShape), "The newShape parameter is invalid.");
+        WEBNN_NODE_ASSERT(newShape.empty() == false, "The newShape is empty.");
 
         ml::Operand reshape = builder.Reshape(input, newShape.data(), newShape.size());
         Napi::Object object = Operand::constructor.New({});
