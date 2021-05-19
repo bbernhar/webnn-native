@@ -97,8 +97,8 @@ namespace webnn_native {
         UNREACHABLE();
     }
 
-    void GraphBase::Compile(BuildGraphCallbackDelgate delgate) {
-        CompileImpl(delgate);
+    void GraphBase::Compile(BuildGraphCallbackDelegate delegate) {
+        CompileImpl(delegate);
     }
 
     MLBuildGraphStatus GraphBase::CompileSync() {

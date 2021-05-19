@@ -61,7 +61,7 @@ namespace webnn_native { namespace dml {
         virtual MaybeError Finish() override;
 
       private:
-        void CompileImpl(BuildGraphCallbackDelgate delegate) override;
+        void CompileImpl(BuildGraphCallbackDelegate delegate) override;
         void ComputeImpl(NamedInputsBase* inputs,
                          MLComputeGraphCallback callback,
                          void* userdata,

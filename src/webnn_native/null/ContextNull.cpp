@@ -37,8 +37,8 @@ namespace webnn_native { namespace null {
     Graph::Graph(Context* context) : GraphBase(context) {
     }
 
-    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
-        delgate(MLBuildGraphStatus_Error, nullptr);
+    void Graph::CompileImpl(BuildGraphCallbackDelegate delegate) {
+        delegate(MLBuildGraphStatus_Error, nullptr);
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,

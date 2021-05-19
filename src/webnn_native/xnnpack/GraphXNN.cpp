@@ -716,8 +716,8 @@ namespace webnn_native { namespace xnnpack {
         return reinterpret_cast<Context*>(GetContext())->GetThreadpool();
     }
 
-    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
-        delgate(MLBuildGraphStatus_Success, this);
+    void Graph::CompileImpl(BuildGraphCallbackDelegate delegate) {
+        delegate(MLBuildGraphStatus_Success, this);
         return;
     }
 

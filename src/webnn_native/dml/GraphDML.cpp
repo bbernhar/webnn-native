@@ -1091,7 +1091,7 @@ namespace webnn_native { namespace dml {
         return {};
     }
 
-    void Graph::CompileImpl(BuildGraphCallbackDelgate delegate) {
+    void Graph::CompileImpl(BuildGraphCallbackDelegate delegate) {
         delegate(GenericCompileImpl(), this);
     }
 
@@ -1114,7 +1114,8 @@ namespace webnn_native { namespace dml {
             inputBindings.push_back(binding.get());
         }
         return FAILED(mDevice->InitializeOperator(mCompiledModel->op.Get(), inputBindings))
-            ? MLBuildGraphStatus_Error : MLBuildGraphStatus_Success;
+                   ? MLBuildGraphStatus_Error
+                   : MLBuildGraphStatus_Success;
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,
@@ -1159,7 +1160,8 @@ namespace webnn_native { namespace dml {
         if (FAILED(mDevice->DispatchOperator(mCompiledModel->op.Get(), inputBindings,
                                              outputExpressions, outputTensors))) {
             if (callback) {
-                callback(MLComputeGraphStatus_Error, nullptr, "Failed to dispatch operator", userdata);
+                callback(MLComputeGraphStatus_Error, nullptr, "Failed to dispatch operator",
+                         userdata);
             }
             return MLComputeGraphStatus_Error;
         }
@@ -1186,8 +1188,8 @@ namespace webnn_native { namespace dml {
             delete tensor;
         }
         if (callback) {
-            callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
-                    nullptr, userdata);
+            callback(MLComputeGraphStatus_Success,
+                     reinterpret_cast<MLNamedResults>(results.Detach()), nullptr, userdata);
         }
         return MLComputeGraphStatus_Success;
     }
