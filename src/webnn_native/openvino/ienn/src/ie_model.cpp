@@ -349,18 +349,29 @@ ie_operand_t* Model::AddPool2d(ie_pool_type type,
                      static_cast<size_t>(options->strides[1])};
   Shape dilations = {static_cast<size_t>(options->dilations[0]),
                      static_cast<size_t>(options->dilations[1])};
+  op::PadType auto_pad;
+  switch (options->autoPad) {
+    case SameUpper:
+      auto_pad = op::PadType::SAME_UPPER;
+      break;
+    case SameLower:
+      auto_pad = op::PadType::SAME_LOWER;
+      break;
+    default:
+      auto_pad = op::PadType::EXPLICIT;
+  }
 
   std::shared_ptr<ngraph::Node> pool2d_node;
   switch (type) {
     case ie_pool_type::AVERAGE_POOL:
       pool2d_node = std::make_shared<op::v1::AvgPool>(
           input_node, strides, pad_begin, pad_end, window_dimensions, true,
-          op::RoundingType::FLOOR, op::PadType::EXPLICIT);
+          op::RoundingType::FLOOR, auto_pad);
       break;
     case ie_pool_type::MAX_POOL:
       pool2d_node = std::make_shared<op::v1::MaxPool>(
           input_node, strides, pad_begin, pad_end, window_dimensions,
-          op::RoundingType::FLOOR, op::PadType::EXPLICIT);
+          op::RoundingType::FLOOR, auto_pad);
       break;
     default:
       assert(0);

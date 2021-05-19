@@ -60,11 +60,8 @@ namespace webnn_native { namespace op {
         mOptions.dilations = mDilations.data();
         mOptions.dilationsCount = mDilations.size();
 
-        if (options == nullptr) {
-            mOptions.layout = ml::InputOperandLayout::Nchw;
-        } else {
-            mOptions.layout = options->layout;
-        }
+        mOptions.autoPad = options == nullptr ? ml::AutoPad::Explicit : options->autoPad;
+        mOptions.layout = options == nullptr ? ml::InputOperandLayout::Nchw : options->layout;
     }
 
     MaybeError Pool2d::AddToGraph(GraphBase* graph) const {

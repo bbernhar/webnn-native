@@ -154,6 +154,7 @@ namespace webnn_native { namespace ie {
             ieOptions.padding = options->padding;
             ieOptions.strides = options->strides;
             ieOptions.dilations = options->dilations;
+            ieOptions.autoPad = static_cast<ie_auto_pad>(options->autoPad);
             ieOptions.layout = static_cast<ie_input_operand_layout>(options->layout);
             return ieOptions;
         }

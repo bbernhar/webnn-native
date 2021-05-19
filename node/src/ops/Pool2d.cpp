@@ -25,6 +25,7 @@ namespace node { namespace op {
         std::vector<int32_t> padding;
         std::vector<int32_t> strides;
         std::vector<int32_t> dilations;
+        ml::AutoPad autoPad = ml::AutoPad::Explicit;
         ml::InputOperandLayout layout = ml::InputOperandLayout::Nchw;
 
         const ml::Pool2dOptions* AsPtr() {
@@ -44,6 +45,7 @@ namespace node { namespace op {
                 mOptions.dilationsCount = dilations.size();
                 mOptions.dilations = dilations.data();
             }
+            mOptions.autoPad = autoPad;
             mOptions.layout = layout;
             return &mOptions;
         }
@@ -94,6 +96,10 @@ namespace node { namespace op {
             if (HasOptionMember(jsOptions, "dilations")) {
                 WEBNN_NODE_ASSERT(GetInt32Array(jsOptions.Get("dilations"), options.dilations, 2),
                                   "The dilations parameter is invalid.");
+            }
+            if (HasOptionMember(jsOptions, "autoPad")) {
+                WEBNN_NODE_ASSERT(GetAutopad(jsOptions.Get("autoPad"), options.autoPad),
+                                  "The autoPad parameter is invalid.");
             }
             if (HasOptionMember(jsOptions, "layout")) {
                 WEBNN_NODE_ASSERT(GetInputOperandLayout(jsOptions.Get("layout"), options.layout),

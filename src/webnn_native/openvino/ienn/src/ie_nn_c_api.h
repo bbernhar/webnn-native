@@ -136,6 +136,7 @@ typedef struct ie_pool2d_options {
   int32_t const* strides;
   uint32_t dilationsCount = 2;
   int32_t const* dilations;
+  ie_auto_pad autoPad = ie_auto_pad::Explicit;
   ie_input_operand_layout layout = ie_input_operand_layout::Nchw;
 } ie_pool2d_options_t;
 
