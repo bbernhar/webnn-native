@@ -63,20 +63,17 @@ namespace node { namespace op {
         ml::Operand filter;
         WEBNN_NODE_ASSERT(GetOperand(info[1], filter), "The filter parameter is invalid.");
 
-        ml::Operand conv2d;
-        if (info.Length() == 2) {
-            conv2d = builder.Conv2d(input, filter);
-        } else if (info.Length() == 3) {
-            // dictionary Conv2dOptions {
-            //   sequence<long> padding;
-            //   sequence<long> strides;
-            //   sequence<long> dilations;
-            //   AutoPad autoPad = "explicit";
-            //   long groups = 1;
-            //   InputOperandLayout inputLayout = "nchw";
-            //   FilterOperandLayout filterLayout = "oihw";
-            // };
-            Conv2dOptions options;
+        // dictionary Conv2dOptions {
+        //   sequence<long> padding;
+        //   sequence<long> strides;
+        //   sequence<long> dilations;
+        //   AutoPad autoPad = "explicit";
+        //   long groups = 1;
+        //   InputOperandLayout inputLayout = "nchw";
+        //   FilterOperandLayout filterLayout = "oihw";
+        // };
+        Conv2dOptions options;
+        if (info.Length() == 3 && !info[2].IsUndefined()) {
             WEBNN_NODE_ASSERT(info[2].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[2].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "padding")) {
@@ -109,12 +106,11 @@ namespace node { namespace op {
                 WEBNN_NODE_ASSERT(GetAutopad(jsOptions.Get("autoPad"), options.autoPad),
                                   "The autoPad parameter is invalid.");
             }
-            conv2d = builder.Conv2d(input, filter, options.AsPtr());
         }
 
         Napi::Object object = Operand::constructor.New({});
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
-        operand->SetImpl(conv2d);
+        operand->SetImpl(builder.Conv2d(input, filter, options.AsPtr()));
         return object;
     }
 

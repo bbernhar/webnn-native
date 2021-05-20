@@ -19,10 +19,6 @@
 namespace node { namespace op {
 
     Napi::Value Transpose::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
-        // dictionary TransposeOptions {
-        //   sequence<long> permutation;
-        // };
-
         // Operand transpose(Operand input, optional TransposeOptions options = {});
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
                           "The number of arguments is invalid.");
@@ -30,11 +26,11 @@ namespace node { namespace op {
         ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        ml::Operand transpose;
-        if (info.Length() == 1) {
-            transpose = builder.Transpose(input);
-        } else {
-            ml::TransposeOptions options;
+        // dictionary TransposeOptions {
+        //   sequence<long> permutation;
+        // };
+        ml::TransposeOptions options;
+        if (info.Length() == 2 && !info[1].IsUndefined()) {
             std::vector<int32_t> permutation;
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
@@ -45,11 +41,10 @@ namespace node { namespace op {
                 options.permutation = permutation.data();
                 options.permutationCount = permutation.size();
             }
-            transpose = builder.Transpose(input, &options);
         }
         Napi::Object object = Operand::constructor.New({});
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
-        operand->SetImpl(transpose);
+        operand->SetImpl(builder.Transpose(input, &options));
         return object;
     }
 

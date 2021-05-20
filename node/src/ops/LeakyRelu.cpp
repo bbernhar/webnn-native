@@ -28,26 +28,22 @@ namespace node { namespace op {
         ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        ml::Operand leakyRelu;
-        if (info.Length() == 1) {
-            leakyRelu = builder.LeakyRelu(input);
-        } else {
-            // dictionary LeakyReluOptions {
-            //   float alpha = 0.01;
-            // };
-            ml::LeakyReluOptions options;
+        // dictionary LeakyReluOptions {
+        //   float alpha = 0.01;
+        // };
+        ml::LeakyReluOptions options;
+        if (info.Length() == 2 && !info[1].IsUndefined()) {
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "alpha")) {
                 WEBNN_NODE_ASSERT(GetFloat(jsOptions.Get("alpha"), options.alpha),
                                   "The alpha parameter is invalid.");
             }
-            leakyRelu = builder.LeakyRelu(input, &options);
         }
 
         Napi::Object object = Operand::constructor.New({});
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
-        operand->SetImpl(leakyRelu);
+        operand->SetImpl(builder.LeakyRelu(input, &options));
         return object;
     }
 }}  // namespace node::op

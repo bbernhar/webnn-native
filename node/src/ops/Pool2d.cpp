@@ -66,18 +66,16 @@ namespace node { namespace op {
         ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        bool hasOptions = false;
+        // dictionary Pool2dOptions {
+        //   sequence<long> windowDimensions;
+        //   sequence<long> padding;
+        //   sequence<long> strides;
+        //   sequence<long> dilations;
+        //   AutoPad autoPad = "explicit";
+        //   InputOperandLayout layout = "nchw";
+        // };
         Pool2dOptions options;
-        if (info.Length() == 2) {
-            hasOptions = true;
-            // dictionary Pool2dOptions {
-            //   sequence<long> windowDimensions;
-            //   sequence<long> padding;
-            //   sequence<long> strides;
-            //   sequence<long> dilations;
-            //   AutoPad autoPad = "explicit";
-            //   InputOperandLayout layout = "nchw";
-            // };
+        if (info.Length() == 2 && !info[1].IsUndefined()) {
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "windowDimensions")) {
@@ -110,10 +108,10 @@ namespace node { namespace op {
         ml::Operand pool2d;
         switch (type) {
             case Pool2dType::kAveragePool2d:
-                pool2d = builder.AveragePool2d(input, hasOptions ? options.AsPtr() : nullptr);
+                pool2d = builder.AveragePool2d(input, options.AsPtr());
                 break;
             case Pool2dType::kMaxPool2d:
-                pool2d = builder.MaxPool2d(input, hasOptions ? options.AsPtr() : nullptr);
+                pool2d = builder.MaxPool2d(input, options.AsPtr());
                 break;
             default:
                 WEBNN_NODE_THROW_AND_RETURN("The type of pool2d is not supported.");
