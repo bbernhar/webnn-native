@@ -103,7 +103,7 @@ namespace node {
 
         void OnOK() {
             if (mStatus != ml::ComputeGraphStatus::Success) {
-                return mDeferred.Reject(Napi::Value::From(mEnv, mMessage));
+                return mDeferred.Reject(Napi::Error::New(mEnv, mMessage).Value());
             }
             Napi::Object jsResults = Napi::Object::New(mEnv);
             for (auto& name : mOutputNames) {
@@ -158,6 +158,9 @@ namespace node {
         }
         Napi::Object jsResources = jsValue.As<Napi::Object>();
         Napi::Array names = jsResources.GetPropertyNames();
+        if (names.Length() == 0) {
+            return false;
+        }
         for (size_t i = 0; i < names.Length(); ++i) {
             std::string name = names.Get(i).As<Napi::String>().Utf8Value();
             Napi::Object jsResource = jsResources.Get(name).As<Napi::Object>();

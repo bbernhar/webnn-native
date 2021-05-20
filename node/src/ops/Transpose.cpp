@@ -41,6 +41,7 @@ namespace node { namespace op {
             if (HasOptionMember(jsOptions, "permutation")) {
                 WEBNN_NODE_ASSERT(GetInt32Array(jsOptions.Get("permutation"), permutation),
                                   "The permutation parameter is invalid.");
+                WEBNN_NODE_ASSERT(permutation.empty() == false, "The newShape is empty.");
                 options.permutation = permutation.data();
                 options.permutationCount = permutation.size();
             }

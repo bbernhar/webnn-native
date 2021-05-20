@@ -154,6 +154,7 @@ namespace webnn_native { namespace ie {
             ieOptions.padding = options->padding;
             ieOptions.strides = options->strides;
             ieOptions.dilations = options->dilations;
+            ieOptions.autoPad = static_cast<ie_auto_pad>(options->autoPad);
             ieOptions.layout = static_cast<ie_input_operand_layout>(options->layout);
             return ieOptions;
         }
@@ -427,12 +428,17 @@ namespace webnn_native { namespace ie {
                                                    NamedOutputsBase* outputs,
                                                    MLComputeGraphCallback callback,
                                                    void* userdata) {
-        // Set input data to nGraph.
-        for (auto& input : inputs->GetRecords()) {
+        auto namedInputs = inputs->GetRecords();
+        for (auto& input : mInputIdMap) {
+            // All the inputs must be set.
+            if (namedInputs.find(input.first) == namedInputs.end()) {
+                COMPUTE_ERROR_CALLBACK(IEStatusCode::GENERAL_ERROR, "The input isn't set");
+            }
             ie_operand_t ieOperand;
-            ieOperand.name = const_cast<char*>(mInputIdMap[input.first].c_str());
-            IEStatusCode code = IE(ie_compilation_set_input)(
-                mIeCompilation, &ieOperand, input.second->buffer, input.second->size);
+            ieOperand.name = const_cast<char*>(input.second.c_str());
+            IEStatusCode code = IE(ie_compilation_set_input)(mIeCompilation, &ieOperand,
+                                                             namedInputs[input.first]->buffer,
+                                                             namedInputs[input.first]->size);
             COMPUTE_ERROR_CALLBACK(code, "IE set input");
         }
 

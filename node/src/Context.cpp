@@ -16,6 +16,7 @@
 
 #include <webnn/webnn_proc.h>
 #include <webnn_native/WebnnNative.h>
+#include <iostream>
 
 #include "Utils.h"
 
@@ -31,6 +32,14 @@ namespace node {
             Napi::Error::New(info.Env(), "Failed to create Context").ThrowAsJavaScriptException();
             return;
         }
+        mImpl.SetUncapturedErrorCallback(
+            [](MLErrorType type, char const* message, void* userData) {
+                if (type != MLErrorType_NoError) {
+                    std::cout << "Uncaptured Error type is " << type << ", message is " << message
+                              << std::endl;
+                }
+            },
+            this);
     }
 
     ml::Context Context::GetImpl() {

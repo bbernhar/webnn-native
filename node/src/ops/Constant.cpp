@@ -22,8 +22,11 @@ namespace node { namespace op {
     namespace {
         union Scalar {
             float floatValue;
+            uint16_t uint16Value;
             int32_t int32Value;
             uint32_t uint32Value;
+            int8_t int8Value;
+            uint8_t uint8Value;
         };
     }  // namespace
 
@@ -51,14 +54,27 @@ namespace node { namespace op {
                 scalar.floatValue = jsValue.FloatValue();
                 value = &scalar.floatValue;
                 size = sizeof(float);
+            } else if (desc.type == ml::OperandType::Float16) {
+                scalar.uint16Value = static_cast<uint16_t>(jsValue.Uint32Value());
+                value = &scalar.uint16Value;
+                size = sizeof(uint16_t);
             } else if (desc.type == ml::OperandType::Int32) {
-                scalar.int32Value = jsValue.Int32Value();
+                WEBNN_NODE_ASSERT(GetInt32(info[0], scalar.int32Value),
+                                  "Invalid value according to int32 type.");
                 value = &scalar.int32Value;
                 size = sizeof(int32_t);
             } else if (desc.type == ml::OperandType::Uint32) {
                 scalar.uint32Value = jsValue.Uint32Value();
                 value = &scalar.uint32Value;
                 size = sizeof(uint32_t);
+            } else if (desc.type == ml::OperandType::Int8) {
+                scalar.int8Value = static_cast<int8_t>(jsValue.Int32Value());
+                value = &scalar.int8Value;
+                size = sizeof(int8_t);
+            } else if (desc.type == ml::OperandType::Uint8) {
+                scalar.uint8Value = static_cast<uint8_t>(jsValue.Uint32Value());
+                value = &scalar.uint8Value;
+                size = sizeof(uint8_t);
             } else {
                 WEBNN_NODE_THROW_AND_RETURN("The operand type is not supported.");
             }

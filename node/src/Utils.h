@@ -32,28 +32,6 @@
 
 namespace node {
 
-    inline bool GetInt32Array(const Napi::Value& jsValue,
-                              std::vector<int32_t>& array,
-                              const size_t size = std::numeric_limits<size_t>::max()) {
-        if (!jsValue.IsArray()) {
-            return false;
-        }
-        Napi::Array jsArray = jsValue.As<Napi::Array>();
-        if (size != std::numeric_limits<size_t>::max() && size != jsArray.Length()) {
-            return false;
-        }
-        std::vector<int32_t> int32Array;
-        for (uint32_t i = 0; i < jsArray.Length(); ++i) {
-            Napi::Value jsItem = static_cast<Napi::Value>(jsArray[i]);
-            if (!jsItem.IsNumber()) {
-                return false;
-            }
-            int32Array.push_back(jsItem.As<Napi::Number>().Int32Value());
-        }
-        array = int32Array;
-        return true;
-    }
-
     template <class T>
     bool GetMappedValue(const std::unordered_map<std::string, T> map,
                         const std::string name,
@@ -67,10 +45,9 @@ namespace node {
 
     inline bool GetOperandType(const Napi::Value& jsValue, ml::OperandType& value) {
         const std::unordered_map<std::string, ml::OperandType> operandTypeMap = {
-            {"float32", ml::OperandType::Float32},
-            {"float16", ml::OperandType::Float16},
-            {"int32", ml::OperandType::Int32},
-            {"uint32", ml::OperandType::Uint32},
+            {"float32", ml::OperandType::Float32}, {"float16", ml::OperandType::Float16},
+            {"int32", ml::OperandType::Int32},     {"uint32", ml::OperandType::Uint32},
+            {"int8", ml::OperandType::Int8},       {"uint8", ml::OperandType::Uint8},
         };
         if (!jsValue.IsString()) {
             return false;
@@ -94,6 +71,7 @@ namespace node {
             {"oihw", ml::FilterOperandLayout::Oihw},
             {"hwio", ml::FilterOperandLayout::Hwio},
             {"ohwi", ml::FilterOperandLayout::Ohwi},
+            {"ihwo", ml::FilterOperandLayout::Ihwo},
         };
         if (!jsValue.IsString()) {
             return false;
@@ -116,6 +94,15 @@ namespace node {
 
     inline bool GetInt32(const Napi::Value& jsValue, int32_t& value) {
         if (!jsValue.IsNumber()) {
+            return false;
+        }
+
+        // Here is a workaround to check int32 following
+        // https://github.com/nodejs/node-addon-api/issues/57.
+        float floatValue = jsValue.As<Napi::Number>().FloatValue();
+        int32_t intValue = jsValue.As<Napi::Number>().Int32Value();
+        if (abs(floatValue - intValue) > 1e-6) {
+            // It's not integer type.
             return false;
         }
         value = jsValue.As<Napi::Number>().Int32Value();
@@ -151,6 +138,29 @@ namespace node {
             return false;
         }
         value = jsValue.As<Napi::String>().Utf8Value();
+        return true;
+    }
+
+    inline bool GetInt32Array(const Napi::Value& jsValue,
+                              std::vector<int32_t>& array,
+                              const size_t size = std::numeric_limits<size_t>::max()) {
+        if (!jsValue.IsArray()) {
+            return false;
+        }
+        Napi::Array jsArray = jsValue.As<Napi::Array>();
+        if (size != std::numeric_limits<size_t>::max() && size != jsArray.Length()) {
+            return false;
+        }
+        std::vector<int32_t> int32Array;
+        for (uint32_t i = 0; i < jsArray.Length(); ++i) {
+            Napi::Value jsItem = static_cast<Napi::Value>(jsArray[i]);
+            int32_t value;
+            if (!GetInt32(jsItem, value)) {
+                return false;
+            }
+            int32Array.push_back(value);
+        }
+        array = int32Array;
         return true;
     }
 
@@ -229,8 +239,11 @@ namespace node {
                               size_t& size) {
         const std::unordered_map<ml::OperandType, napi_typedarray_type> arrayTypeMap = {
             {ml::OperandType::Float32, napi_float32_array},
+            {ml::OperandType::Float16, napi_uint16_array},
             {ml::OperandType::Int32, napi_int32_array},
             {ml::OperandType::Uint32, napi_uint32_array},
+            {ml::OperandType::Int8, napi_int8_array},
+            {ml::OperandType::Uint8, napi_uint8_array},
         };
         if (!jsValue.IsTypedArray()) {
             return false;
@@ -251,11 +264,20 @@ namespace node {
             case ml::OperandType::Float32:
                 expectedSize = sizeof(float);
                 break;
+            case ml::OperandType::Float16:
+                expectedSize = sizeof(uint16_t);
+                break;
             case ml::OperandType::Int32:
                 expectedSize = sizeof(int32_t);
                 break;
             case ml::OperandType::Uint32:
                 expectedSize = sizeof(uint32_t);
+                break;
+            case ml::OperandType::Int8:
+                expectedSize = sizeof(int8_t);
+                break;
+            case ml::OperandType::Uint8:
+                expectedSize = sizeof(uint8_t);
                 break;
             default:
                 return false;
@@ -278,6 +300,9 @@ namespace node {
         Napi::Object jsOutputs = jsValue.As<Napi::Object>();
         namedOperands = ml::CreateNamedOperands();
         Napi::Array outputNames = jsOutputs.GetPropertyNames();
+        if (outputNames.Length() == 0) {
+            return false;
+        }
         for (size_t j = 0; j < outputNames.Length(); ++j) {
             std::string name = outputNames.Get(j).As<Napi::String>().Utf8Value();
             Napi::Object output = jsOutputs.Get(name).As<Napi::Object>();
