@@ -1,17 +1,15 @@
-# An Electron.js example of lenet using webnn-native
-
-The weight file of the Lenet is stored at the path `<examples_path>\lenet\lenet.bin`.
+# An Electron.js example of LeNet using webnn-native
 
 ### Install
 
-```
-$ npm install
+```bash
+npm install
 ```
 
 ### Run 
 
 ```bash
-npm run start
+npm start
 ```
 
 ### Screenshot

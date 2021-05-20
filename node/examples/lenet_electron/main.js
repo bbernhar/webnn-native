@@ -12,12 +12,13 @@ function createWindow() {
     width: 1220,
     height: 840,
     webPreferences: {
-      nodeIntegration: true
+      nodeIntegration: true,
+      preload: app.getAppPath() + "/setup.js"
     }
   })
 
   // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
+  mainWindow.loadFile('../../third_party/webnn-samples/lenet/index.html')
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function() {
