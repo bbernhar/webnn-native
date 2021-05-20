@@ -1091,7 +1091,15 @@ namespace webnn_native { namespace dml {
         return {};
     }
 
-    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+    void Graph::CompileImpl(BuildGraphCallbackDelegate delegate) {
+        delegate(GenericCompileImpl(), this);
+    }
+
+    MLBuildGraphStatus Graph::CompileSyncImpl() {
+        return GenericCompileImpl();
+    }
+
+    MLBuildGraphStatus Graph::GenericCompileImpl() {
         // FIXME(nhu): implement async
         std::vector<::dml::Expression> outputs;
         for (auto& output : mOutputs) {
@@ -1105,17 +1113,27 @@ namespace webnn_native { namespace dml {
         for (auto& binding : mBindings) {
             inputBindings.push_back(binding.get());
         }
-        MLBuildGraphStatus status =
-            FAILED(mDevice->InitializeOperator(mCompiledModel->op.Get(), inputBindings))
-                ? MLBuildGraphStatus_Error
-                : MLBuildGraphStatus_Success;
-        delgate(status, this);
+        return FAILED(mDevice->InitializeOperator(mCompiledModel->op.Get(), inputBindings))
+                   ? MLBuildGraphStatus_Error
+                   : MLBuildGraphStatus_Success;
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,
                             MLComputeGraphCallback callback,
                             void* userdata,
                             NamedOutputsBase* outputs) {
+        GenericComputeImpl(inputs, outputs, callback, userdata);
+    }
+
+    MLComputeGraphStatus Graph::ComputeSyncImpl(NamedInputsBase* inputs,
+                                                NamedOutputsBase* outputs) {
+        return GenericComputeImpl(inputs, outputs);
+    }
+
+    MLComputeGraphStatus Graph::GenericComputeImpl(NamedInputsBase* inputs,
+                                                   NamedOutputsBase* outputs,
+                                                   MLComputeGraphCallback callback,
+                                                   void* userdata) {
         for (auto& input : inputs->GetRecords()) {
             ::pydml::Binding* inputBinding = mInputs.at(input.first);
             inputBinding->data.buffer = const_cast<void*>(input.second->buffer);
@@ -1141,8 +1159,11 @@ namespace webnn_native { namespace dml {
         std::vector<pydml::TensorData*> outputTensors;
         if (FAILED(mDevice->DispatchOperator(mCompiledModel->op.Get(), inputBindings,
                                              outputExpressions, outputTensors))) {
-            callback(MLComputeGraphStatus_Error, nullptr, "Failed to dispatch operator", userdata);
-            return;
+            if (callback) {
+                callback(MLComputeGraphStatus_Error, nullptr, "Failed to dispatch operator",
+                         userdata);
+            }
+            return MLComputeGraphStatus_Error;
         }
 
         Ref<NamedResultsBase> results = AcquireRef(new NamedResultsBase());
@@ -1166,9 +1187,11 @@ namespace webnn_native { namespace dml {
             }
             delete tensor;
         }
-        callback(MLComputeGraphStatus_Success, reinterpret_cast<MLNamedResults>(results.Detach()),
-                 nullptr, userdata);
-        return;
+        if (callback) {
+            callback(MLComputeGraphStatus_Success,
+                     reinterpret_cast<MLNamedResults>(results.Detach()), nullptr, userdata);
+        }
+        return MLComputeGraphStatus_Success;
     }
 
 }}  // namespace webnn_native::dml

@@ -26,7 +26,7 @@
 
 namespace webnn_native {
 
-    using BuildGraphCallbackDelgate =
+    using BuildGraphCallbackDelegate =
         std::function<void(MLBuildGraphStatus status, GraphBase* graph)>;
 
     class GraphBuilderBase : public ObjectBase {

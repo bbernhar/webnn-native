@@ -61,11 +61,21 @@ namespace webnn_native { namespace dml {
         virtual MaybeError Finish() override;
 
       private:
-        void CompileImpl(BuildGraphCallbackDelgate delgate) override;
+        void CompileImpl(BuildGraphCallbackDelegate delegate) override;
         void ComputeImpl(NamedInputsBase* inputs,
                          MLComputeGraphCallback callback,
                          void* userdata,
                          NamedOutputsBase* outputs) override;
+
+        MLBuildGraphStatus CompileSyncImpl() override;
+        MLComputeGraphStatus ComputeSyncImpl(NamedInputsBase* inputs,
+                                             NamedOutputsBase* outputs) override;
+
+        MLBuildGraphStatus GenericCompileImpl();
+        MLComputeGraphStatus GenericComputeImpl(NamedInputsBase* inputs,
+                                                NamedOutputsBase* outputs,
+                                                MLComputeGraphCallback callback = nullptr,
+                                                void* userdata = nullptr);
 
         ::dml::Expression BindingConstant(DML_TENSOR_DATA_TYPE dmlTensorType,
                                           ::dml::TensorDimensions dmlTensorDims,

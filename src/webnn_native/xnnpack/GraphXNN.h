@@ -52,7 +52,7 @@ namespace webnn_native { namespace xnnpack {
         virtual MaybeError Finish() override;
 
       private:
-        void CompileImpl(BuildGraphCallbackDelgate delgate) override;
+        void CompileImpl(BuildGraphCallbackDelegate delegate) override;
         void ComputeImpl(NamedInputsBase* inputs,
                          MLComputeGraphCallback callback,
                          void* userdata,

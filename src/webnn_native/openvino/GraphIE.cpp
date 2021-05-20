@@ -398,13 +398,13 @@ namespace webnn_native { namespace ie {
         return {};
     }
 
-    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+    void Graph::CompileImpl(BuildGraphCallbackDelegate delegate) {
         // TODO(junwei): We may leverage https://dawn-review.googlesource.com/c/dawn/+/36360 to
         // implement async compilation as standle-alone component.
         // Create compilation for IE backend.
         IEStatusCode code = IE(ie_create_compilation)(mIeModel, &mIeCompilation);
-        delgate(code == IEStatusCode::OK ? MLBuildGraphStatus_Success : MLBuildGraphStatus_Error,
-                this);
+        delegate(code == IEStatusCode::OK ? MLBuildGraphStatus_Success : MLBuildGraphStatus_Error,
+                 this);
     }
 
     void Graph::ComputeImpl(NamedInputsBase* inputs,

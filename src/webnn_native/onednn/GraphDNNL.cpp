@@ -1073,12 +1073,12 @@ namespace webnn_native { namespace onednn {
         return {};
     }
 
-    void Graph::CompileImpl(BuildGraphCallbackDelgate delgate) {
+    void Graph::CompileImpl(BuildGraphCallbackDelegate delegate) {
         MLBuildGraphStatus status =
             FAILED(dnnl_stream_create(&mStream, GetEngine(), dnnl_stream_default_flags))
                 ? MLBuildGraphStatus_Error
                 : MLBuildGraphStatus_Success;
-        delgate(status, this);
+        delegate(status, this);
     }
 
     MLBuildGraphStatus Graph::CompileSyncImpl() {

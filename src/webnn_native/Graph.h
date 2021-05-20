@@ -69,11 +69,11 @@ namespace webnn_native {
         virtual MaybeError AddGemm(const op::Gemm* gemm);
         virtual MaybeError AddClamp(const op::Clamp* Clamp);
         virtual MaybeError Finish();
-        virtual void Compile(BuildGraphCallbackDelgate delgate);
+        virtual void Compile(BuildGraphCallbackDelegate delegate);
         virtual MLBuildGraphStatus CompileSync();
 
       private:
-        virtual void CompileImpl(BuildGraphCallbackDelgate delgate) = 0;
+        virtual void CompileImpl(BuildGraphCallbackDelegate delegate) = 0;
         virtual void ComputeImpl(NamedInputsBase* inputs,
                                  MLComputeGraphCallback callback,
                                  void* userdata,
