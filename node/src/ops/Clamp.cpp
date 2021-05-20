@@ -27,15 +27,12 @@ namespace node { namespace op {
         ml::Operand input;
         WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
 
-        ml::Operand clamp;
-        if (info.Length() == 1) {
-            clamp = builder.Clamp(input);
-        } else {
-            // dictionary ClampOptions {
-            //   Operand minValue;
-            //   Operand maxValue;
-            // };
-            ml::ClampOptions options;
+        // dictionary ClampOptions {
+        //   Operand minValue;
+        //   Operand maxValue;
+        // };
+        ml::ClampOptions options;
+        if (info.Length() == 2 && !info[1].IsUndefined()) {
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "minValue")) {
@@ -46,12 +43,11 @@ namespace node { namespace op {
                 WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("maxValue"), options.maxValue),
                                   "The maxValue parameter is invalid.");
             }
-            clamp = builder.Clamp(input, &options);
         }
 
         Napi::Object object = Operand::constructor.New({});
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
-        operand->SetImpl(clamp);
+        operand->SetImpl(builder.Clamp(input, &options));
         return object;
     }
 

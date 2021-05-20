@@ -29,18 +29,15 @@ namespace node { namespace op {
         ml::Operand b;
         WEBNN_NODE_ASSERT(GetOperand(info[1], b), "The a parameter is invalid.");
 
-        ml::Operand gemm;
-        if (info.Length() == 2) {
-            gemm = builder.Gemm(a, b);
-        } else {
-            // dictionary GemmOptions {
-            //   Operand c;
-            //   float alpha = 1.0;
-            //   float beta = 1.0;
-            //   boolean aTranspose = false;
-            //   boolean bTranspose = false;
-            // };
-            ml::GemmOptions options;
+        // dictionary GemmOptions {
+        //   Operand c;
+        //   float alpha = 1.0;
+        //   float beta = 1.0;
+        //   boolean aTranspose = false;
+        //   boolean bTranspose = false;
+        // };
+        ml::GemmOptions options;
+        if (info.Length() == 3 && !info[2].IsUndefined()) {
             WEBNN_NODE_ASSERT(info[2].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[2].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "c")) {
@@ -63,11 +60,10 @@ namespace node { namespace op {
                 WEBNN_NODE_ASSERT(GetBoolean(jsOptions.Get("bTranspose"), options.bTranspose),
                                   "The bTranspose parameter is invalid.");
             }
-            gemm = builder.Gemm(a, b, &options);
         }
         Napi::Object object = Operand::constructor.New({});
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
-        operand->SetImpl(gemm);
+        operand->SetImpl(builder.Gemm(a, b, &options));
         return object;
     }
 }}  // namespace node::op
