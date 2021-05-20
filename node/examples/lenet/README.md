@@ -1,15 +1,9 @@
 # A Node.js example of LeNet using webnn-native
 
-### Install
-
-```bash
-npm install
-```
-
 ### Run
 
 ```bash
-npm run start
+npm start
 ```
 
 ### Result
