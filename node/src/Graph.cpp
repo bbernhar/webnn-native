@@ -177,6 +177,7 @@ namespace node {
                 // Input buffer is required.
                 return false;
             }
+            int jsElementLength = -1;
             if (jsResource.Has("data")) {
                 if (!jsResource.Get("data").IsTypedArray()) {
                     return false;
@@ -189,10 +190,25 @@ namespace node {
                     reinterpret_cast<int8_t*>(jsTypedArray.ArrayBuffer().Data()) +
                     jsTypedArray.ByteOffset());
                 resource.size = jsTypedArray.ByteLength();
+                jsElementLength = jsTypedArray.ElementSize();
             }
             if (HasOptionMember(jsResource, "dimensions")) {
                 if (!GetInt32Array(jsResource.Get("dimensions"), resource.dimensions)) {
                     return false;
+                }
+
+                /***Dimensions Check ***/
+                if (jsElementLength != -1) {
+                    int dimensionsLen = resource.dimensions.size();
+                    int dimensionSize = 1;
+                    for (int i = 0; i < dimensionsLen; i++) {
+                        dimensionSize *= resource.dimensions[i];
+                    }
+                    std::cout << dimensionSize << std::endl;
+                    std::cout << jsElementLength << std::endl;
+                    if (dimensionSize != jsElementLength) {
+                        return false;
+                    }
                 }
             }
             namedResources[name] = resource;
