@@ -25,12 +25,14 @@ namespace node { namespace op {
         WEBNN_NODE_ASSERT(info.Length() == 3 || info.Length() == 4,
                           "The number of arguments is invalid.");
 
+        std::vector<napi_value> args;
         ml::Operand input;
-        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input, args), "The input parameter is invalid.");
         ml::Operand mean;
-        WEBNN_NODE_ASSERT(GetOperand(info[1], mean), "The mean parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[1], mean, args), "The mean parameter is invalid.");
         ml::Operand variance;
-        WEBNN_NODE_ASSERT(GetOperand(info[2], variance), "The variance parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[2], variance, args),
+                          "The variance parameter is invalid.");
 
         // dictionary BatchNormalizationOptions {
         //   Operand scale;
@@ -43,11 +45,11 @@ namespace node { namespace op {
             WEBNN_NODE_ASSERT(info[3].IsObject(), "The options must be an object.")
             Napi::Object jsOptions = info[3].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "scale")) {
-                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("scale"), options.scale),
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("scale"), options.scale, args),
                                   "The scale parameter is invalid.");
             }
             if (HasOptionMember(jsOptions, "bias")) {
-                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("bias"), options.bias),
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("bias"), options.bias, args),
                                   "The bias parameter is invalid.");
             }
             if (HasOptionMember(jsOptions, "axis")) {
@@ -60,7 +62,7 @@ namespace node { namespace op {
             }
         }
 
-        Napi::Object object = Operand::constructor.New({});
+        Napi::Object object = Operand::constructor.New(args);
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
         operand->SetImpl(builder.BatchNorm(input, mean, variance, &options));
         return object;

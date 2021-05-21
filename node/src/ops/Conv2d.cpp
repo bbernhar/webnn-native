@@ -58,10 +58,11 @@ namespace node { namespace op {
         WEBNN_NODE_ASSERT(info.Length() == 2 || info.Length() == 3,
                           "The number of arguments is invalid.");
 
+        std::vector<napi_value> args;
         ml::Operand input;
-        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input, args), "The input parameter is invalid.");
         ml::Operand filter;
-        WEBNN_NODE_ASSERT(GetOperand(info[1], filter), "The filter parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[1], filter, args), "The filter parameter is invalid.");
 
         // dictionary Conv2dOptions {
         //   sequence<long> padding;
@@ -108,7 +109,7 @@ namespace node { namespace op {
             }
         }
 
-        Napi::Object object = Operand::constructor.New({});
+        Napi::Object object = Operand::constructor.New(args);
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
         operand->SetImpl(builder.Conv2d(input, filter, options.AsPtr()));
         return object;

@@ -25,8 +25,9 @@ namespace node { namespace op {
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
                           "The number of arguments is invalid.");
 
+        std::vector<napi_value> args;
         ml::Operand input;
-        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input, args), "The input parameter is invalid.");
 
         // dictionary LeakyReluOptions {
         //   float alpha = 0.01;
@@ -41,7 +42,7 @@ namespace node { namespace op {
             }
         }
 
-        Napi::Object object = Operand::constructor.New({});
+        Napi::Object object = Operand::constructor.New(args);
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
         operand->SetImpl(builder.LeakyRelu(input, &options));
         return object;

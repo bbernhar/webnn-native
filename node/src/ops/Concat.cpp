@@ -22,11 +22,14 @@ namespace node { namespace op {
     Napi::Value Concat::Build(const Napi::CallbackInfo& info, ml::GraphBuilder builder) {
         // Operand concat(sequence<Operand> inputs, long axis);
         WEBNN_NODE_ASSERT(info.Length() == 2, "The number of arguments is invalid.");
+
+        std::vector<napi_value> args;
         std::vector<ml::Operand> inputs;
-        WEBNN_NODE_ASSERT(GetOperandArray(info[0], inputs), "The input operands are invalid.");
+        WEBNN_NODE_ASSERT(GetOperandArray(info[0], inputs, args),
+                          "The input operands are invalid.");
         int32_t axis;
         WEBNN_NODE_ASSERT(GetInt32(info[1], axis), "The axis parameter is invalid.");
-        Napi::Object object = Operand::constructor.New({});
+        Napi::Object object = Operand::constructor.New(args);
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
         operand->SetImpl(builder.Concat(inputs.size(), inputs.data(), axis));
         return object;
