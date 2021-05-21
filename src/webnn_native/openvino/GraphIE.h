@@ -17,6 +17,7 @@
 
 #include <map>
 #include <set>
+#include <unordered_set>
 
 #include "webnn_native/Error.h"
 #include "webnn_native/Graph.h"
@@ -84,6 +85,8 @@ namespace webnn_native { namespace ie {
         std::map<std::string, std::string> mOutputNameMap;
         // Map the operand to IE internal id
         std::map<const OperandBase*, std::string> mOperandIdMap;
+        // store the constant operands
+        std::unordered_set<const OperandBase*> mConstantSet;
     };
 
 }}  // namespace webnn_native::ie

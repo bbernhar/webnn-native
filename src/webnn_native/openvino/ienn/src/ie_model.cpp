@@ -37,6 +37,25 @@ SizeVector ToVector(int32_t const* value, uint32_t count) {
   return data;
 }
 
+std::shared_ptr<ngraph::Node> CreateConstantNode(const int32_t* dimensions,
+                                                 uint32_t dimensionsCount,
+                                                 const float* value) {
+  std::shared_ptr<ngraph::Node> constant;
+  SizeVector constant_dimensions(dimensions, dimensions + dimensionsCount);
+  SizeVector constant_value;
+  uint32_t size = 1;
+  for (uint32_t i = 0; i < dimensionsCount; ++i) {
+    size *= dimensions[i];
+  }
+  constant_value.reserve(size);
+  for (uint32_t i = 0; i < size; ++i) {
+    constant_value.push_back(value[i]);
+  }
+  constant =
+      op::Constant::create(element::f32, constant_dimensions, constant_value);
+  return constant;
+}
+
 ie_operand_t* CreateOperand(std::string& name) {
   ie_operand_t* operand = new ie_operand_t();
   std::unique_ptr<char[]> node_name(new char[name.length() + 1]);
@@ -247,17 +266,39 @@ ie_operand_t* Model::AddBinary(ie_binary_type type,
 ie_operand_t* Model::AddClamp(ie_operand_t* input,
                               ie_clamp_options_t* options) {
   auto input_node = name_node_map_[input->name];
-  // Compare input with min value.
-  auto max_node = options->minValue.name != nullptr
-                      ? std::make_shared<op::v1::Maximum>(
-                            input_node, name_node_map_[options->minValue.name])
-                            ->output(0)
-                      : input_node;
-  // Compare input with max value.
-  auto clamp_node = options->maxValue.name != nullptr
-                        ? std::make_shared<op::v1::Minimum>(
-                              max_node, name_node_map_[options->maxValue.name])
-                        : max_node.get_node_shared_ptr();
+  std::shared_ptr<ngraph::Node> clamp_node;
+  if (options->minDimensionsCount == 0 && options->maxDimensionsCount == 0) {
+    float min = options->minValue == nullptr
+                    ? std::numeric_limits<float>::lowest()
+                    : options->minValue[0];
+    float max = options->maxValue == nullptr ? std::numeric_limits<float>::max()
+                                             : options->maxValue[0];
+    clamp_node = std::make_shared<op::v0::Clamp>(input_node, min, max);
+  } else {
+    std::shared_ptr<ngraph::Node> min_constant, max_constant;
+    if (options->minValue != nullptr) {
+      min_constant =
+          CreateConstantNode(options->minDimensions,
+                             options->minDimensionsCount, options->minValue);
+    }
+
+    if (options->maxValue != nullptr) {
+      max_constant =
+          CreateConstantNode(options->maxDimensions,
+                             options->maxDimensionsCount, options->maxValue);
+    }
+
+    // Compare input with min value.
+    auto max_node =
+        options->minValue != nullptr
+            ? std::make_shared<op::v1::Maximum>(input_node, min_constant)
+                  ->output(0)
+            : input_node;
+    // Compare input with max value.
+    clamp_node = options->maxValue != nullptr
+                     ? std::make_shared<op::v1::Minimum>(max_node, max_constant)
+                     : max_node.get_node_shared_ptr();
+  }
 
   std::string node_name = clamp_node->get_name();
   name_node_map_[node_name] = clamp_node->output(0);

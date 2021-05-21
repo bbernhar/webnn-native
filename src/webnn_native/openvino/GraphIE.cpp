@@ -187,6 +187,7 @@ namespace webnn_native { namespace ie {
         DAWN_TRY(CheckStatusCode(code, "IE add constant"));
 
         mOperandIdMap[constant] = std::string(ieOperand->name);
+        mConstantSet.insert(constant);
         return {};
     }
 
@@ -263,11 +264,25 @@ namespace webnn_native { namespace ie {
         ie_clamp_options_t ieOptions;
         auto options = clamp->GetOptions();
         if (options->minValue != nullptr) {
-            ieOptions.minValue = {const_cast<char*>(mOperandIdMap[inputs[1].Get()].c_str())};
+            if (mConstantSet.find(inputs[1].Get()) != mConstantSet.end()) {
+                op::Constant* minConstant = reinterpret_cast<op::Constant*>(inputs[1].Get());
+                ieOptions.minValue = static_cast<const float*>(minConstant->GetValue());
+                ieOptions.minDimensions = minConstant->GetOperandDescriptor()->dimensions;
+                ieOptions.minDimensionsCount = minConstant->GetOperandDescriptor()->dimensionsCount;
+            } else {
+                return DAWN_INTERNAL_ERROR("The min of clamp options is not a constant");
+            }
         }
         if (options->maxValue != nullptr) {
             size_t maxIndex = options->minValue != nullptr ? 2 : 1;
-            ieOptions.maxValue = {const_cast<char*>(mOperandIdMap[inputs[maxIndex].Get()].c_str())};
+            if (mConstantSet.find(inputs[maxIndex].Get()) != mConstantSet.end()) {
+                op::Constant* maxConstant = reinterpret_cast<op::Constant*>(inputs[maxIndex].Get());
+                ieOptions.maxValue = static_cast<const float*>(maxConstant->GetValue());
+                ieOptions.maxDimensions = maxConstant->GetOperandDescriptor()->dimensions;
+                ieOptions.maxDimensionsCount = maxConstant->GetOperandDescriptor()->dimensionsCount;
+            } else {
+                return DAWN_INTERNAL_ERROR("The max of clamp options is not a constant");
+            }
         }
         ie_operand_t* ieOperand;
         IEStatusCode code = IE(ie_model_add_clamp)(mIeModel, &input, &ieOptions, &ieOperand);
