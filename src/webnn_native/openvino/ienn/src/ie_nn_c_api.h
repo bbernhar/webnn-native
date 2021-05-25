@@ -97,8 +97,12 @@ enum ie_auto_pad : uint32_t {
 };
 
 typedef struct ie_clamp_options {
-  ie_operand_t minValue;
-  ie_operand_t maxValue;
+  const float* minValue = nullptr;
+  const float* maxValue = nullptr;
+  const int32_t* minDimensions;
+  const int32_t* maxDimensions;
+  uint32_t minDimensionsCount = 0;
+  uint32_t maxDimensionsCount = 0;
 } ie_clamp_options_t;
 
 typedef struct ie_batch_norm_options {
