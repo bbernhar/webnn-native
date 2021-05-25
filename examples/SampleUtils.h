@@ -86,6 +86,7 @@ namespace utils {
         std::vector<int32_t> padding;
         std::vector<int32_t> strides;
         std::vector<int32_t> dilations;
+        ml::AutoPad autoPad = ml::AutoPad::Explicit;
         ml::InputOperandLayout layout = ml::InputOperandLayout::Nchw;
 
         const ml::Pool2dOptions* AsPtr() {
@@ -106,6 +107,7 @@ namespace utils {
                 mOptions.dilations = dilations.data();
             }
             mOptions.layout = layout;
+            mOptions.autoPad = autoPad;
             return &mOptions;
         }
 
