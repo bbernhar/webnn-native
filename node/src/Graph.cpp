@@ -177,6 +177,7 @@ namespace node {
                 // Input buffer is required.
                 return false;
             }
+            int jsElementLength = 0;
             if (jsResource.Has("data")) {
                 if (!jsResource.Get("data").IsTypedArray()) {
                     return false;
@@ -189,10 +190,22 @@ namespace node {
                     reinterpret_cast<int8_t*>(jsTypedArray.ArrayBuffer().Data()) +
                     jsTypedArray.ByteOffset());
                 resource.size = jsTypedArray.ByteLength();
+                jsElementLength = jsTypedArray.ElementSize();
             }
             if (HasOptionMember(jsResource, "dimensions")) {
                 if (!GetInt32Array(jsResource.Get("dimensions"), resource.dimensions)) {
                     return false;
+                }
+
+                /***Dimensions Check ***/
+                if (jsElementLength) {
+                    int dimensionSize = 1;
+                    for (auto& dim : resource.dimensions) {
+                        dimensionSize *= dim;
+                    }
+                    if (dimensionSize != jsElementLength) {
+                        return false;
+                    }
                 }
             }
             namedResources[name] = resource;
