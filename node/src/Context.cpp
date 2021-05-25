@@ -18,7 +18,6 @@
 #include <webnn_native/WebnnNative.h>
 #include <iostream>
 
-#include "Utils.h"
 
 Napi::FunctionReference node::Context::constructor;
 
@@ -27,7 +26,7 @@ namespace node {
     Context::Context(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Context>(info) {
         WebnnProcTable backendProcs = webnn_native::GetProcs();
         webnnProcSetProcs(&backendProcs);
-        mImpl = ml::Context(webnn_native::CreateContext());
+        mImpl = ml::Context::Acquire(webnn_native::CreateContext());
         if (!mImpl) {
             Napi::Error::New(info.Env(), "Failed to create Context").ThrowAsJavaScriptException();
             return;

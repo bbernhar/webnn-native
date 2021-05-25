@@ -18,11 +18,11 @@
     "build": "node-gyp configure && node-gyp build",
     "build-debug": "node-gyp configure --debug && node-gyp build",
     "start": "http-server",
-    "test": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/*/*.js third_party/webnn-polyfill/test/cts/from_nnapi/tests/cts.js third_party/webnn-polyfill/test/models/**/*.js",
-    "test-api": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/api/*.js",
-    "test-ops": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/ops/*.js",
-    "test-cts": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/cts/from_nnapi/tests/cts.js",
-    "test-models": "cross-env NODE_ENV=test mocha --require ./node_setup.js --exit third_party/webnn-polyfill/test/models/**/*.js"
+    "test": "cross-env NODE_ENV=test mocha --require ./node_setup.js third_party/webnn-polyfill/test/*/*.js third_party/webnn-polyfill/test/cts/from_nnapi/tests/cts.js third_party/webnn-polyfill/test/models/**/*.js",
+    "test-api": "cross-env NODE_ENV=test mocha --require ./node_setup.js third_party/webnn-polyfill/test/api/*.js",
+    "test-ops": "cross-env NODE_ENV=test mocha --require ./node_setup.js third_party/webnn-polyfill/test/ops/*.js",
+    "test-cts": "cross-env NODE_ENV=test mocha --require ./node_setup.js third_party/webnn-polyfill/test/cts/from_nnapi/tests/cts.js",
+    "test-models": "cross-env NODE_ENV=test mocha --require ./node_setup.js third_party/webnn-polyfill/test/models/**/*.js"
   },
   "dependencies": {
     "bindings": "^1.5.0"
