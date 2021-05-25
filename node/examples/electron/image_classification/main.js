@@ -4,7 +4,7 @@ const path = require('path')
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let mainWindow
+let mainWindow = {}
 
 function createWindow() {
   // Create the browser window.
@@ -13,12 +13,14 @@ function createWindow() {
     height: 840,
     webPreferences: {
       nodeIntegration: true,
-      preload: app.getAppPath() + "/setup.js"
+      preload: app.getAppPath().replace('image_classification','setup.js')
     }
   })
 
-  // and load the index.html of the app.
-  mainWindow.loadFile('../../third_party/webnn-samples/lenet/index.html')
+  // Load the index.html with 'numRunsParm' to run inference multiple times.
+  let url = `file://${__dirname}/../../../third_party/webnn-samples/image_classification/index.html`
+  const numRunsParm = '?' + process.argv[2]
+  mainWindow.loadURL(url + numRunsParm)
 
   // Emitted when the window is closed.
   mainWindow.on('closed', function() {
