@@ -21,7 +21,7 @@ Options:
 ## Example Output
 
 ```sh
-> out/Release/MobileNetV2 -i examples/images/test.jpg -l nhwc -m examples/MobileNetV2/weights/mobilenetv2_nhwc/
+> out/Release/MobileNetV2 -i examples/images/test.jpg -l nhwc -m node/third_party/webnn-polyfill/test-data/models/mobilenetv2_nhwc/weights/
 Info: Compilation Time: 180.225 ms
 Info: Execution Time: 7.667 ms
 
@@ -35,7 +35,7 @@ Info: Done.
 ```
 
 ```sh
-> out/Release/MobileNetV2 -i examples/images/test.jpg -l nchw -m examples/MobileNetV2/weights/mobilenetv2_nchw/
+> out/Release/MobileNetV2 -i examples/images/test.jpg -l nchw -m node/third_party/webnn-polyfill/test-data/models/mobilenetv2_nchw/weights/
 Info: Compilation Time: 140.49 ms
 Info: Execution Time: 6.23081 ms
 
