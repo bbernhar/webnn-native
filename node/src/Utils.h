@@ -18,7 +18,6 @@
 #define NAPI_EXPERIMENTAL
 #include <math.h>
 #include <napi.h>
-#include <iostream>
 #include <unordered_map>
 
 #include "Operand.h"

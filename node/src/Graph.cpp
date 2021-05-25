@@ -177,7 +177,7 @@ namespace node {
                 // Input buffer is required.
                 return false;
             }
-            int jsElementLength = -1;
+            int jsElementLength = 0;
             if (jsResource.Has("data")) {
                 if (!jsResource.Get("data").IsTypedArray()) {
                     return false;
@@ -198,14 +198,11 @@ namespace node {
                 }
 
                 /***Dimensions Check ***/
-                if (jsElementLength != -1) {
-                    int dimensionsLen = resource.dimensions.size();
+                if (jsElementLength) {
                     int dimensionSize = 1;
-                    for (int i = 0; i < dimensionsLen; i++) {
-                        dimensionSize *= resource.dimensions[i];
+                    for (auto& dim : resource.dimensions) {
+                        dimensionSize *= dim;
                     }
-                    std::cout << dimensionSize << std::endl;
-                    std::cout << jsElementLength << std::endl;
                     if (dimensionSize != jsElementLength) {
                         return false;
                     }
