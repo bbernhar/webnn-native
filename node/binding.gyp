@@ -11,7 +11,7 @@
       }}
     ],
     [ 'OS=="linux"', {
-      'variables': { 
+      'variables': {
         'WEBNN_NATIVE_LIBRARY': '-lwebnn_native',
         'WEBNN_PROC_LIBRARY': '-lwebnn_proc',
       }}
@@ -61,6 +61,15 @@
       'libraries' : [
         '<(WEBNN_NATIVE_LIBRARY)',
         '<(WEBNN_PROC_LIBRARY)'
+      ],
+      'conditions': [
+        [ 'OS=="win"', {
+            'copies': [ {
+              'destination': '<(module_root_dir)/build/$(Configuration)/',
+              'files': [ '<(WEBNN_NATIVE_LIB_PATH)/DirectML.dll' ]
+            } ]
+          }
+        ]
       ]
     }
   ]
