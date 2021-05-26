@@ -27,6 +27,19 @@ namespace webnn_native { namespace onednn {
             dawn::ErrorLog() << "Failed to create oneDNN engine.";
             return nullptr;
         }
+
+        dnnl_engine_t engine = reinterpret_cast<Context*>(context.Get())->GetEngine();
+        dnnl_engine_kind_t engineKind;
+        status = dnnl_engine_get_kind(engine, &engineKind);
+        if (status != dnnl_success) {
+            dawn::ErrorLog() << "Failed to get oneDNN engine kind.";
+            return nullptr;
+        }
+        if (engineKind == dnnl_cpu) {
+            dawn::InfoLog() << "Created oneDNN CPU engine.";
+        } else if (engineKind == dnnl_gpu) {
+            dawn::InfoLog() << "Created oneDNN GPU engine.";
+        }
         return context.Detach();
     }
 

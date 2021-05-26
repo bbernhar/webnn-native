@@ -46,14 +46,22 @@ namespace webnn_native { namespace onednn {
         virtual MaybeError AddBinary(const op::Binary* binary) override;
         virtual MaybeError AddConv2d(const op::Conv2d* conv2d) override;
         virtual MaybeError AddPool2d(const op::Pool2d* pool2d) override;
-        virtual MaybeError AddReshape(const op::Reshape* relu) override;
-        virtual MaybeError AddTranspose(const op::Transpose* transpose) override;
         virtual MaybeError AddUnary(const op::Unary* unary) override;
         virtual MaybeError AddClamp(const op::Clamp* clamp) override;
         virtual MaybeError Finish() override;
 
       private:
-        void CompileImpl(BuildGraphCallbackDelegate delegate) override;
+        dnnl_status_t AddConv2dImpl(const op::Conv2d* conv2d,
+                                    const op::Binary* add = nullptr,
+                                    const op::Clamp* clamp = nullptr);
+        dnnl_status_t AddBinaryImpl(const op::Binary* binary);
+        dnnl_status_t AddClampImpl(const op::Clamp* clamp);
+        dnnl_status_t AddPool2dImpl(const op::Pool2d* pool2d);
+        dnnl_status_t AddUnaryImpl(const op::Unary* unary);
+
+        dnnl_status_t BuildPrimitives();
+
+        void CompileImpl(BuildGraphCallbackDelegate delgate) override;
         void ComputeImpl(NamedInputsBase* inputs,
                          MLComputeGraphCallback callback,
                          void* userdata,
@@ -82,6 +90,14 @@ namespace webnn_native { namespace onednn {
         std::map<const OperandBase*, dnnl_memory_t> mOperandMemoryMap;
         std::map<std::string, dnnl_memory_t> mInputMemoryMap;
         std::map<std::string, dnnl_memory_t> mOutputMemoryMap;
+
+        enum OperandType { BINARY, CLAMP, CONV2D, POOL2D, UNARY };
+        struct OperandInfo {
+            OperandType opType;
+            const OperandBase* op;
+        };
+        // For op fusion
+        std::vector<OperandInfo> mOperandsToBuild;
 
         typedef struct {
             dnnl_primitive_t primitive;
