@@ -29,14 +29,6 @@ namespace node {
         }
     }
 
-    ml::Operand Operand::GetImpl() const {
-        return mImpl;
-    }
-
-    void Operand::SetImpl(const ml::Operand& operand) {
-        mImpl = operand;
-    }
-
     Napi::Object Operand::Initialize(Napi::Env env, Napi::Object exports) {
         Napi::HandleScope scope(env);
         Napi::Function func = DefineClass(env, "MLOperand", {});

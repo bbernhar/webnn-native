@@ -30,8 +30,12 @@ namespace node {
         explicit Operand(const Napi::CallbackInfo& info);
         ~Operand() = default;
 
-        ml::Operand GetImpl() const;
-        void SetImpl(const ml::Operand& operand);
+        ml::Operand GetImpl() const {
+            return mImpl;
+        };
+        void SetImpl(const ml::Operand& operand) {
+            mImpl = operand;
+        };
 
       private:
         ml::Operand mImpl;
