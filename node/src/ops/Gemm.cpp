@@ -24,10 +24,11 @@ namespace node { namespace op {
         WEBNN_NODE_ASSERT(info.Length() == 2 || info.Length() == 3,
                           "The number of arguments is invalid.");
 
+        std::vector<napi_value> args;
         ml::Operand a;
-        WEBNN_NODE_ASSERT(GetOperand(info[0], a), "The a parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[0], a, args), "The a parameter is invalid.");
         ml::Operand b;
-        WEBNN_NODE_ASSERT(GetOperand(info[1], b), "The a parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[1], b, args), "The a parameter is invalid.");
 
         // dictionary GemmOptions {
         //   Operand c;
@@ -41,7 +42,7 @@ namespace node { namespace op {
             WEBNN_NODE_ASSERT(info[2].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[2].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "c")) {
-                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("c"), options.c),
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("c"), options.c, args),
                                   "The c parameter is invalid.");
             }
             if (HasOptionMember(jsOptions, "alpha")) {
@@ -61,7 +62,7 @@ namespace node { namespace op {
                                   "The bTranspose parameter is invalid.");
             }
         }
-        Napi::Object object = Operand::constructor.New({});
+        Napi::Object object = Operand::constructor.New(args);
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
         operand->SetImpl(builder.Gemm(a, b, &options));
         return object;

@@ -14,19 +14,19 @@
 
 #include "Operand.h"
 
+#include "Utils.h"
+
 Napi::FunctionReference node::Operand::constructor;
 
 namespace node {
 
     Operand::Operand(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Operand>(info) {
-    }
-
-    ml::Operand Operand::GetImpl() const {
-        return mImpl;
-    }
-
-    void Operand::SetImpl(const ml::Operand& operand) {
-        mImpl = operand;
+        for (size_t i = 0; i < info.Length(); ++i) {
+            Napi::Object operand = info[i].As<Napi::Object>();
+            WEBNN_NODE_ASSERT_AND_RETURN(operand.InstanceOf(Operand::constructor.Value()),
+                                         "The input must be Operand object.");
+            mInputs.push_back(Napi::Persistent(operand));
+        }
     }
 
     Napi::Object Operand::Initialize(Napi::Env env, Napi::Object exports) {

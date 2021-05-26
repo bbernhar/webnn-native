@@ -16,19 +16,28 @@
 #define NODE_UTILS_H_
 
 #define NAPI_EXPERIMENTAL
-#include <math.h>
+#include <cmath>
 #include <napi.h>
 #include <unordered_map>
 
 #include "Operand.h"
 
-#define WEBNN_NODE_THROW_AND_RETURN(message)                            \
-    Napi::Error::New(info.Env(), message).ThrowAsJavaScriptException(); \
+#define WEBNN_NODE_THROW(message) \
+    Napi::Error::New(info.Env(), message).ThrowAsJavaScriptException();
+
+#define WEBNN_NODE_THROW_AND_RETURN(message) \
+    WEBNN_NODE_THROW(message);               \
     return info.Env().Undefined();
 
 #define WEBNN_NODE_ASSERT(condition, message) \
     if (!(condition)) {                       \
         WEBNN_NODE_THROW_AND_RETURN(message); \
+    }
+
+#define WEBNN_NODE_ASSERT_AND_RETURN(condition, message) \
+    if (!(condition)) {                                  \
+        WEBNN_NODE_THROW(message);                       \
+        return;                                          \
     }
 
 namespace node {
@@ -102,7 +111,7 @@ namespace node {
         // https://github.com/nodejs/node-addon-api/issues/57.
         float floatValue = jsValue.As<Napi::Number>().FloatValue();
         int32_t intValue = jsValue.As<Napi::Number>().Int32Value();
-        if (fabs((floatValue - intValue)) > 1e-6) {
+        if (std::fabs(floatValue - intValue) > 1e-6) {
             // It's not integer type.
             return false;
         }
@@ -165,7 +174,9 @@ namespace node {
         return true;
     }
 
-    inline bool GetOperand(const Napi::Value& jsValue, ml::Operand& operand) {
+    inline bool GetOperand(const Napi::Value& jsValue,
+                           ml::Operand& operand,
+                           std::vector<napi_value>& args) {
         if (!jsValue.IsObject()) {
             return false;
         }
@@ -174,10 +185,13 @@ namespace node {
             return false;
         }
         operand = Napi::ObjectWrap<Operand>::Unwrap(jsObject)->GetImpl();
+        args.push_back(jsObject.As<Napi::Value>());
         return true;
     }
 
-    inline bool GetOperandArray(const Napi::Value& jsValue, std::vector<ml::Operand>& array) {
+    inline bool GetOperandArray(const Napi::Value& jsValue,
+                                std::vector<ml::Operand>& array,
+                                std::vector<napi_value>& args) {
         if (!jsValue.IsArray()) {
             return false;
         }
@@ -192,6 +206,7 @@ namespace node {
             }
             Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
             array.push_back(operand->GetImpl());
+            args.push_back(object.As<Napi::Value>());
         }
         return true;
     }

@@ -35,24 +35,26 @@
 
 Napi::FunctionReference node::GraphBuilder::constructor;
 
-#define BUILD_BINARY(op)                                                          \
-    WEBNN_NODE_ASSERT(info.Length() == 2, "The number of arguments is invalid."); \
-    ml::Operand a;                                                                \
-    WEBNN_NODE_ASSERT(GetOperand(info[0], a), "The a parameter is invalid.");     \
-    ml::Operand b;                                                                \
-    WEBNN_NODE_ASSERT(GetOperand(info[1], b), "The a parameter is invalid.");     \
-    Napi::Object object = Operand::constructor.New({});                           \
-    Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);                 \
-    operand->SetImpl(mImpl.op(a, b));                                             \
+#define BUILD_BINARY(op)                                                            \
+    WEBNN_NODE_ASSERT(info.Length() == 2, "The number of arguments is invalid.");   \
+    std::vector<napi_value> args;                                                   \
+    ml::Operand a;                                                                  \
+    WEBNN_NODE_ASSERT(GetOperand(info[0], a, args), "The a parameter is invalid."); \
+    ml::Operand b;                                                                  \
+    WEBNN_NODE_ASSERT(GetOperand(info[1], b, args), "The a parameter is invalid."); \
+    Napi::Object object = Operand::constructor.New(args);                           \
+    Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);                   \
+    operand->SetImpl(mImpl.op(a, b));                                               \
     return object;
 
-#define BUILD_UNARY(op)                                                               \
-    WEBNN_NODE_ASSERT(info.Length() == 1, "The number of arguments is invalid.");     \
-    ml::Operand input;                                                                \
-    WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid."); \
-    Napi::Object object = Operand::constructor.New({});                               \
-    Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);                     \
-    operand->SetImpl(mImpl.op(input));                                                \
+#define BUILD_UNARY(op)                                                                     \
+    WEBNN_NODE_ASSERT(info.Length() == 1, "The number of arguments is invalid.");           \
+    std::vector<napi_value> args;                                                           \
+    ml::Operand input;                                                                      \
+    WEBNN_NODE_ASSERT(GetOperand(info[0], input, args), "The input parameter is invalid."); \
+    Napi::Object object = Operand::constructor.New(args);                                   \
+    Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);                           \
+    operand->SetImpl(mImpl.op(input));                                                      \
     return object;
 
 namespace node {

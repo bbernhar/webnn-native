@@ -24,8 +24,9 @@ namespace node { namespace op {
         WEBNN_NODE_ASSERT(info.Length() == 1 || info.Length() == 2,
                           "The number of arguments is invalid.");
 
+        std::vector<napi_value> args;
         ml::Operand input;
-        WEBNN_NODE_ASSERT(GetOperand(info[0], input), "The input parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[0], input, args), "The input parameter is invalid.");
 
         // dictionary ClampOptions {
         //   Operand minValue;
@@ -36,16 +37,16 @@ namespace node { namespace op {
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "minValue")) {
-                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("minValue"), options.minValue),
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("minValue"), options.minValue, args),
                                   "The minValue parameter is invalid.");
             }
             if (HasOptionMember(jsOptions, "maxValue")) {
-                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("maxValue"), options.maxValue),
+                WEBNN_NODE_ASSERT(GetOperand(jsOptions.Get("maxValue"), options.maxValue, args),
                                   "The maxValue parameter is invalid.");
             }
         }
 
-        Napi::Object object = Operand::constructor.New({});
+        Napi::Object object = Operand::constructor.New(args);
         Operand* operand = Napi::ObjectWrap<Operand>::Unwrap(object);
         operand->SetImpl(builder.Clamp(input, &options));
         return object;

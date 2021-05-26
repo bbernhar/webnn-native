@@ -79,6 +79,12 @@ namespace node { namespace op {
                 WEBNN_NODE_THROW_AND_RETURN("The operand type is not supported.");
             }
             desc.dimensions = {1};
+
+            Napi::ArrayBuffer arrayBuffer = Napi::ArrayBuffer::New(info.Env(), size);
+            memcpy(arrayBuffer.Data(), value, size);
+            value = arrayBuffer.Data();
+            // Keep a reference of value.
+            object.Set("value", arrayBuffer);
         } else {
             WEBNN_NODE_ASSERT(GetOperandDescriptor(info[0], desc),
                               "The desc parameter is invalid.");
