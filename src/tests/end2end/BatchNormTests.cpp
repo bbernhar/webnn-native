@@ -73,7 +73,7 @@ TEST_F(BatchNormTests, BatchNormNchw) {
 
     options = {};
     options.bias = bias;
-    expectedValue = {-0.999995, 0., 0.999995, 0.183506, 1., 1.81649};
+    expectedValue = {-0.999995, 0., 0.999995, 0.183506, 1., 1.816494};
     CheckBatchNorm(inputShape, inputData, meanData, meanShape, varianceData, varianceShape,
                    expectedValue, &options);
 }
@@ -109,7 +109,7 @@ TEST_F(BatchNormTests, BatchNormNhwc) {
     options = {};
     options.bias = bias;
     options.axis = 3;
-    expectedValue = {-0.999995, 0.183506, 0., 1., 0.999995, 1.81649};
+    expectedValue = {-0.999995, 0.183506, 0., 1., 0.999995, 1.816494};
     CheckBatchNorm(inputShape, inputData, meanData, meanShape, varianceData, varianceShape,
                    expectedValue, &options);
 }
