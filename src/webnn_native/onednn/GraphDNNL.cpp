@@ -758,11 +758,6 @@ namespace webnn_native { namespace onednn {
             DAWN_ASSERT(mOperandMemoryMap.find(biasOperand) != mOperandMemoryMap.end());
             biasMemory = mOperandMemoryMap.at(biasOperand);
             DNNL_TRY(GetMemoryDesc(biasMemory, &biasMemoryDesc));
-            // dnnl_dim_t outputChannels = outputDims[1];
-            // std::vector<dnnl_dim_t> biasDims = {outputChannels};
-            // DNNL_TRY(dnnl_memory_desc_init_by_tag(&biasInitDesc, biasDims.size(),
-            // biasDims.data(),
-            //                                       dataType, dnnl_a));
         }
 
         dnnl_primitive_attr_t attr = nullptr;
