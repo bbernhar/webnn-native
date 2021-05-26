@@ -21,7 +21,7 @@ Napi::FunctionReference node::Operand::constructor;
 namespace node {
 
     Operand::Operand(const Napi::CallbackInfo& info) : Napi::ObjectWrap<Operand>(info) {
-        for (int i = 0; i < info.Length(); ++i) {
+        for (size_t i = 0; i < info.Length(); ++i) {
             Napi::Object operand = info[i].As<Napi::Object>();
             WEBNN_NODE_ASSERT_AND_RETURN(operand.InstanceOf(Operand::constructor.Value()),
                                          "The input must be Operand object.");

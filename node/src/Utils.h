@@ -16,7 +16,7 @@
 #define NODE_UTILS_H_
 
 #define NAPI_EXPERIMENTAL
-#include <math.h>
+#include <cmath>
 #include <napi.h>
 #include <unordered_map>
 
@@ -111,7 +111,7 @@ namespace node {
         // https://github.com/nodejs/node-addon-api/issues/57.
         float floatValue = jsValue.As<Napi::Number>().FloatValue();
         int32_t intValue = jsValue.As<Napi::Number>().Int32Value();
-        if (fabs((floatValue - intValue)) > 1e-6) {
+        if (std::fabs(floatValue - intValue) > 1e-6) {
             // It's not integer type.
             return false;
         }
