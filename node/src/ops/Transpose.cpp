@@ -31,8 +31,8 @@ namespace node { namespace op {
         //   sequence<long> permutation;
         // };
         ml::TransposeOptions options;
+        std::vector<int32_t> permutation;
         if (info.Length() == 2 && !info[1].IsUndefined()) {
-            std::vector<int32_t> permutation;
             WEBNN_NODE_ASSERT(info[1].IsObject(), "The options must be an object.");
             Napi::Object jsOptions = info[1].As<Napi::Object>();
             if (HasOptionMember(jsOptions, "permutation")) {
