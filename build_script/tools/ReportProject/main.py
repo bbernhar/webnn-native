@@ -3,12 +3,15 @@ import sys
 import csv
 import glob
 from jinja2 import Environment, FileSystemLoader
+
 current_path = os.getcwd()
 sys.path.append(current_path)
+
 class ReportHandler():
     """
     This class is used for analyzing and processing data.
     """
+
     def csvFileReader(self, commit_id_path_name):
         """
         This mehtod is used for reading data from csv file.
@@ -97,6 +100,7 @@ class ReportHandler():
         self.device_information = file_name_processer[1]+'_' + \
             file_name_processer[2]+'_'+file_name_processer[3]
         self.href_info = r"https://github.com/otcshare/webnn-native/commit/" + self.dir_name
+
     def generateHtml(self):
         """
         This method is used for generating HTML report page.
@@ -117,6 +121,7 @@ class ReportHandler():
                 body_backend_os_fail_list_html=self.backend_os_fail_list)
             fout.write(html_content)
         return self.report_name
+
 def main(commit_id_path_name):
     """
     This function is used for executing all workflow.
@@ -126,6 +131,7 @@ def main(commit_id_path_name):
     report_handler_obj = ReportHandler()
     report_handler_obj.csvFileReader(commit_id_path_name)
     report_handler_obj.generateHtml()
+
 if __name__ == '__main__':
     commit_id_path_name = sys.argv[1]
     main(commit_id_path_name)
