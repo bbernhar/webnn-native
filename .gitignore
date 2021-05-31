@@ -25,8 +25,8 @@ node/examples/electron/lenet/node_modules
 node/examples/electron/lenet/package-lock.json
 node/examples/electron/image_classification/node_modules
 node/examples/electron/image_classification/package-lock.json
-node/examples/console_lenet/node_modules
-node/examples/console_lenet/package-lock.json
+node/examples/console/lenet/node_modules
+node/examples/console/lenet/package-lock.json
 tools
 out
 

@@ -38,6 +38,9 @@ deps = {
   'node/third_party/webnn-polyfill/test-data': {
     'url': '{github_git}/webmachinelearning/test-data.git@4b096f6fed4551bf055c43c34b8b4cd58d2e4a58'
   },
+  'node/third_party/webnn-samples': {
+    'url': '{github_git}/webmachinelearning/webnn-samples.git@8ac60606633f1822db7c76facd3ea3548f8359c2'
+  },
 
   # Dependencies required to use GN/Clang in standalone
   'build': {

@@ -2,8 +2,9 @@
 
 ### Install
 
+Firstly, ensure that you have done these steps in [README.md](/node/README.md), then run:
 ```bash
-npm install
+npm install --webnn_native_lib_path="../out/Release"
 ```
 
 ### Run
