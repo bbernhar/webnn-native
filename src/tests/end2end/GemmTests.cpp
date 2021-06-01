@@ -37,7 +37,7 @@ class GemmTests : public WebnnTest {
         const ml::Operand b = utils::BuildInput(builder, "b", bShape);
         ml::GemmOptions gemmOptions = {};
         if (options != nullptr) {
-            if (!options->cShape.empty() && !options->cData.empty()) {
+            if (!options->cData.empty()) {
                 gemmOptions.c =
                     utils::BuildConstant(builder, options->cShape, options->cData.data(),
                                          options->cData.size() * sizeof(float));
@@ -193,6 +193,52 @@ TEST_F(GemmTests, NoBias) {
         2.0995352, 1.8906747, 1.1958704, 2.5321422, 2.6342242, 1.5699927,
     };
     TestGemm(inputAShape, inputAData, inputBShape, inputBData, expectedShape, expectedValue);
+}
+
+TEST_F(GemmTests, ScalarBias) {
+    const std::vector<int32_t> inputAShape = {2, 3};
+    const std::vector<float> inputAData = {
+        0.41595492, 0.7063231, 0.3784654, 0.3524597, 0.41936764, 0.08190536,
+    };
+    const std::vector<int32_t> inputBShape = {3, 4};
+    const std::vector<float> inputBData = {
+        0.38356313, 0.92939967, 0.06164686, 0.09034675, 0.34704673, 0.9492532,
+        0.7738587,  0.93576515, 0.49937814, 0.38543963, 0.02364575, 0.80216527,
+    };
+    const std::vector<int32_t> expectedShape = {2, 4};
+    const std::vector<float> expectedValue = {
+        3.7336695, 4.3429437, 3.7211857, 4.1421247, 3.4616325, 3.8972316, 3.4881961, 3.6299748,
+    };
+    Options options;
+    options.cShape = {};
+    options.cData = {3.14};
+    TestGemm(inputAShape, inputAData, inputBShape, inputBData, expectedShape, expectedValue,
+             &options);
+}
+
+TEST_F(GemmTests, BroadcastingBias) {
+    const std::vector<int32_t> inputAShape = {3, 7};
+    const std::vector<float> inputAData = {
+        0.96122783, 0.7414551,  0.22178489, 0.23116009, 0.19249596, 0.860125,   0.24145897,
+        0.43657154, 0.20278022, 0.01261093, 0.526355,   0.94473153, 0.59416693, 0.5121616,
+        0.93981737, 0.9942615,  0.46400633, 0.40644044, 0.43731472, 0.22579351, 0.6787937,
+    };
+    const std::vector<int32_t> inputBShape = {7, 3};
+    const std::vector<float> inputBData = {
+        0.1004637,  0.31921694, 0.7323029,  0.05150159, 0.9162225,  0.89180815, 0.00931315,
+        0.3568885,  0.9506084,  0.04976705, 0.6065987,  0.99300903, 0.29279497, 0.29296732,
+        0.38377914, 0.80959237, 0.5812153,  0.34052548, 0.2931774,  0.12963536, 0.58294684,
+    };
+    const std::vector<int32_t> expectedShape = {3, 3};
+    const std::vector<float> expectedValue = {
+        1.7498734, 2.5712128, 3.0910947, 1.7664618, 2.1154947,
+        2.6767135, 1.4580698, 2.7485106, 3.8380768,
+    };
+    Options options;
+    options.cShape = {1};
+    options.cData = {0.7780463};
+    TestGemm(inputAShape, inputAData, inputBShape, inputBData, expectedShape, expectedValue,
+             &options);
 }
 
 TEST_F(GemmTests, aTranspose) {

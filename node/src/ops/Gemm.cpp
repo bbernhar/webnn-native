@@ -28,7 +28,7 @@ namespace node { namespace op {
         ml::Operand a;
         WEBNN_NODE_ASSERT(GetOperand(info[0], a, args), "The a parameter is invalid.");
         ml::Operand b;
-        WEBNN_NODE_ASSERT(GetOperand(info[1], b, args), "The a parameter is invalid.");
+        WEBNN_NODE_ASSERT(GetOperand(info[1], b, args), "The b parameter is invalid.");
 
         // dictionary GemmOptions {
         //   Operand c;
