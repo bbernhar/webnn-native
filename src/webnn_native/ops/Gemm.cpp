@@ -48,7 +48,9 @@ namespace webnn_native { namespace op {
         }
         if (mInputs.size() == 3) {
             if (mInputs[2]->Rank() > 2) {
-                return DAWN_VALIDATION_ERROR("The third input should be a scalar or 1D");
+                return DAWN_VALIDATION_ERROR(
+                    "The specified third input is either a scalar, or of the shape that is "
+                    "unidirectionally broadcastable.");
             }
         }
         mRank = mInputs[0]->Rank();
