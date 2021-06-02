@@ -39,11 +39,20 @@ namespace webnn_native { namespace op {
             if (input->IsError()) {
                 return DAWN_VALIDATION_ERROR("Argument input is invalid.");
             }
-            if (input->Rank() != 2) {
-                return DAWN_VALIDATION_ERROR("Argument input is not 2D.");
+        }
+        if (mInputs[0]->Rank() != 2) {
+            return DAWN_VALIDATION_ERROR("The first input is not 2D.");
+        }
+        if (mInputs[1]->Rank() != 2) {
+            return DAWN_VALIDATION_ERROR("The second input is not 2D.");
+        }
+        if (mInputs.size() == 3) {
+            if (mInputs[2]->Rank() > 2) {
+                return DAWN_VALIDATION_ERROR(
+                    "The specified third input is either a scalar, or of the shape that is "
+                    "unidirectionally broadcastable.");
             }
         }
-
         mRank = mInputs[0]->Rank();
         mType = mInputs[0]->Type();
 

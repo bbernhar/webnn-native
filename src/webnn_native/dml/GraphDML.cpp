@@ -1036,6 +1036,9 @@ namespace webnn_native { namespace dml {
             DAWN_ASSERT(mExpression.find(inputs[2].Get()) != mExpression.end());
             c = mExpression.at(inputs[2].Get());
             ::dml::TensorDimensions cDims = c->GetOutputDesc().sizes;
+            if (cDims.size() != 2) {
+                cDims = ExpandDimensions(cDims, 2);
+            }
             // BroadCast the Shape of optional C to {1, 1, M, N } supported in DML.
             std::vector<bool> broadcast(4, false);
             for (size_t i = 0; i < 2; ++i) {

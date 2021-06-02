@@ -117,10 +117,8 @@ const ml::Operand MobileNetV2::BuildGemm(const ml::GraphBuilder& builder,
     const ml::Operand gemmWeights = BuildConstantFromNpy(builder, weightsPath);
     const std::string biasPath = mDataPath + "gemm_" + std::to_string(gemmIndex) + "_bias.npy";
     const ml::Operand gemmBias = BuildConstantFromNpy(builder, biasPath);
-    const std::vector<int32_t> newShape = {1, -1};
-    const ml::Operand reshapedBias = builder.Reshape(gemmBias, newShape.data(), newShape.size());
     ml::GemmOptions gemmOptions;
-    gemmOptions.c = reshapedBias;
+    gemmOptions.c = gemmBias;
     gemmOptions.bTranspose = true;
     return builder.Gemm(input, gemmWeights, &gemmOptions);
 }
