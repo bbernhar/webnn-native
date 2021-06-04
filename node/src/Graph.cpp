@@ -107,22 +107,26 @@ namespace node {
             }
             Napi::Object jsResults = Napi::Object::New(mEnv);
             for (auto& name : mOutputNames) {
-                ml::Result result = mNamedResults.Get(name.data());
-                if (result == nullptr) {
+                ml::Result* result = new ml::Result(mNamedResults.Get(name.data()));
+                if (result->GetHandle() == nullptr) {
                     // specified outputs.
                     continue;
                 }
                 Napi::Object jsOutput = Napi::Object::New(mEnv);
-                Napi::ArrayBuffer arrayBuffer = Napi::ArrayBuffer::New(
-                    mEnv, const_cast<void*>(result.Buffer()), result.BufferSize());
+                typedef void (*FinalizerCallback)(Napi::Env env, void* buffer, ml::Result* reslut);
+                Napi::ArrayBuffer arrayBuffer =
+                    Napi::ArrayBuffer::New<FinalizerCallback, ml::Result>(
+                        mEnv, const_cast<void*>(result->Buffer()), result->BufferSize(),
+                        [](Napi::Env env, void* buffer, ml::Result* reslut) { delete reslut; },
+                        result);
                 // FIXME: handle other data types
                 Napi::Float32Array float32Array = Napi::Float32Array::New(
-                    mEnv, result.BufferSize() / sizeof(float), arrayBuffer, 0);
+                    mEnv, result->BufferSize() / sizeof(float), arrayBuffer, 0);
                 jsOutput.Set("data", float32Array);
-                if (result.Dimensions()) {
-                    Napi::Array jsDimensions = Napi::Array::New(mEnv, result.DimensionsSize());
-                    for (size_t i = 0; i < result.DimensionsSize(); ++i) {
-                        jsDimensions[i] = Napi::Number::New(mEnv, result.Dimensions()[i]);
+                if (result->Dimensions()) {
+                    Napi::Array jsDimensions = Napi::Array::New(mEnv, result->DimensionsSize());
+                    for (size_t i = 0; i < result->DimensionsSize(); ++i) {
+                        jsDimensions[i] = Napi::Number::New(mEnv, result->Dimensions()[i]);
                     }
                     jsOutput.Set("dimensions", jsDimensions);
                 }
