@@ -107,6 +107,10 @@ namespace node { namespace op {
                 WEBNN_NODE_ASSERT(GetAutopad(jsOptions.Get("autoPad"), options.autoPad),
                                   "The autoPad parameter is invalid.");
             }
+            if (HasOptionMember(jsOptions, "transpose")) {
+                WEBNN_NODE_THROW_AND_RETURN(
+                    "The transpose parameter isn't supported in webNN-native.");
+            }
         }
 
         Napi::Object object = Operand::constructor.New(args);

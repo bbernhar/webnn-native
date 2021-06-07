@@ -23,7 +23,7 @@ namespace node {
 
     struct Input {
       public:
-        void const* buffer;
+        void const* buffer = nullptr;
         size_t size;
         std::vector<int32_t> dimensions;
 
@@ -176,8 +176,8 @@ namespace node {
             //   ArrayBufferView buffer;
             //   sequence<long> dimensions;
             // };
-            T resource;
-            if (resource.buffer != nullptr && !jsResource.Has("data")) {
+            T resource = {};
+            if (!jsResource.Has("data")) {
                 // Input buffer is required.
                 return false;
             }
