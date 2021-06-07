@@ -402,7 +402,12 @@ namespace webnn_native { namespace dml {
     }
 
     Graph::Graph(Context* context) : GraphBase(context) {
-        mDevice = context->GetDevice();
+#if defined(_DEBUG)
+        mDevice.reset(new ::pydml::Device(true, true));
+#else
+        mDevice.reset(new ::pydml::Device(true, false));
+#endif
+        mDevice->Init();
         mGraph.reset(new ::dml::Graph(mDevice->GetDevice()));
     }
 
@@ -1116,6 +1121,7 @@ namespace webnn_native { namespace dml {
         for (auto& binding : mBindings) {
             inputBindings.push_back(binding.get());
         }
+        std::lock_guard<std::mutex> lock(mMutex);
         return FAILED(mDevice->InitializeOperator(mCompiledModel->op.Get(), inputBindings))
                    ? MLBuildGraphStatus_Error
                    : MLBuildGraphStatus_Success;
@@ -1160,6 +1166,7 @@ namespace webnn_native { namespace dml {
             }
         }
         std::vector<pydml::TensorData*> outputTensors;
+        std::lock_guard<std::mutex> lock(mMutex);
         if (FAILED(mDevice->DispatchOperator(mCompiledModel->op.Get(), inputBindings,
                                              outputExpressions, outputTensors))) {
             if (callback) {
@@ -1175,6 +1182,7 @@ namespace webnn_native { namespace dml {
             pydml::TensorData* tensor = outputTensors[i];
             void* outputBuffer = tensor->Get();
             size_t bufferLength = tensor->Size();
+
             std::vector<int32_t> dimensions;
             for (auto size : tensor->Desc()->sizes) {
                 // convert from uint32_t to int32_t.
@@ -1186,9 +1194,9 @@ namespace webnn_native { namespace dml {
                 const Output* output = outputs->GetRecords().at(outputName);
                 if (output->size >= bufferLength) {
                     memcpy(output->buffer, outputBuffer, bufferLength);
+                    delete tensor;
                 }
             }
-            delete tensor;
         }
         if (callback) {
             callback(MLComputeGraphStatus_Success,
