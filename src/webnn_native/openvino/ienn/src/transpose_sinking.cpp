@@ -397,7 +397,11 @@ bool TransposeSinking::run_on_function(shared_ptr<ngraph::Function> f) {
     }
     if (auto transpose = ngraph::as_type_ptr<opset::Transpose>(n)) {
       sink_transpose(transpose, reorders, transposes_to_delete);
-    } else if (ngraph::op::is_unary_elementwise_arithmetic(n)) {
+    } else if (ngraph::op::is_unary_elementwise_arithmetic(n) ||
+               ngraph::as_type_ptr<opset::Clamp>(n)) {
+      // since clamp op is not identified as unary_element op
+      // and we use clamp to implement activations, we need to sink Clamp as
+      // other unary ops
       sink_unary(n, reorders, transposes_to_delete);
     } else if (ngraph::op::is_binary_elementwise_arithmetic(n)) {
       sink_binary(n, reorders, transposes_to_delete);
