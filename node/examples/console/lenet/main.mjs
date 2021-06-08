@@ -14,14 +14,14 @@
 
 'use strict';
 
-import utils from '../utils.js';
-import webnn from '../../lib/webnn.js';
+import utils from '../../utils.js';
+import webnn from '../../../lib/webnn.js';
 global.navigator = webnn;
 global.MLGraphBuilder = webnn.MLGraphBuilder;
 
 (async function main() {
-  let module = await import('../../third_party/webnn-samples/lenet/lenet.js');
-  const lenet = new module.LeNet('../../third_party/webnn-polyfill/test-data/models/lenet_nchw/weights/lenet.bin');
+  let module = await import('../../../third_party/webnn-samples/lenet/lenet.js');
+  const lenet = new module.LeNet('../../../third_party/webnn-polyfill/test-data/models/lenet_nchw/weights/lenet.bin');
   let start = Date.now();
   const outputOperand = await lenet.load();
   console.log(
