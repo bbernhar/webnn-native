@@ -3,6 +3,7 @@
 const fs = require('fs-extra');
 const os = require('os');
 const path = require('path');
+const sleep = require('sleep-promise');
 const utils = require('./utils');
 
 /** Class representing a tester. */
@@ -242,8 +243,11 @@ class Tester {
       }
       await this.runEnd2EndTests();
       await this.runLeNetExample();
+      await sleep(300000);
       await this.runSqueezeNetExample();
+      await sleep(300000);
       await this.runMobileNetv2Example();
+      await sleep(300000);
       await this.runTestsByNode();
     }
     // Upload results CSV file onto Reports Server
