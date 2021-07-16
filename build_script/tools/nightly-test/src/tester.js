@@ -185,6 +185,48 @@ class Tester {
     }
   }
 
+  /**
+   * Run ResNet example.
+   */
+  async runResNetExample() {
+    let result = {output: ''};
+    if (this.config_.device.os === 'linux') {
+      // Run ResNet50v2 nchw example
+      await utils.childCommand(this.logger_,
+          './ResNet -m node/third_party/webnn-polyfill/test-data/models/' +
+          'resnet50v2_nchw/weights/ -i examples/images/test.jpg -l nchw ' +
+          '-n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'ResNet50v2_nchw');
+      await sleep(300000);
+      // Run ResNet101v2 nhwc example
+      result = {output: ''};
+      await utils.childCommand(this.logger_,
+          './ResNet -m node/third_party/webnn-polyfill/test-data/models/' +
+          'resnet101v2_nhwc/weights/ -i examples/images/test.jpg -l nhwc ' +
+          '-n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'ResNet101v2_nhwc');
+    } else if (this.config_.device.os === 'win') {
+      // Run ResNet50v2 nchw example
+      await utils.childCommand(this.logger_,
+          'ResNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\resnet50v2_nchw\\weights\\ -i examples\\images\\test.jpg ' +
+          '-l nchw -n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'ResNet50v2_nchw');
+      await sleep(300000);
+      // Run ResNet101v2 nhwc example
+      result = {output: ''};
+      await utils.childCommand(this.logger_,
+          'ResNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
+          'models\\resnet101v2_nhwc\\weights\\ -i examples\\images\\test.jpg ' +
+          '-l nhwc -n 201', [], this.unzipPath_, result);
+      await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
+          'Examples', 'ResNet101v2_nhwc');
+    }
+  }
+
   async runTestsByNode() {
     await utils.childCommand(
         this.logger_, 'npm', ['install'], path.join(this.unzipPath_, 'node'));
@@ -251,6 +293,8 @@ class Tester {
       await this.runSqueezeNetExample();
       await sleep(300000);
       await this.runMobileNetv2Example();
+      await sleep(300000);
+      await this.runResNetExample();
       await sleep(300000);
       await this.runTestsByNode();
     }
