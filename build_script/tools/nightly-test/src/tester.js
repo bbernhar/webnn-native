@@ -114,6 +114,7 @@ class Tester {
           '-n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'SqueezeNet1.1_nchw');
+      await sleep(300000);
       // Run SqueezeNet nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -130,6 +131,7 @@ class Tester {
           'test.jpg -l nchw -n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'SqueezeNet1.1_nchw');
+      await sleep(300000);
       // Run SqueezeNet nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -154,6 +156,7 @@ class Tester {
           '-n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'MobileNetv2_nchw');
+      await sleep(300000);
       // Run MobileNetv2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -170,6 +173,7 @@ class Tester {
           '-l nchw -n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'MobileNetv2_nchw');
+      await sleep(300000);
       // Run MobileNetv2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
