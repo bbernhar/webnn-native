@@ -3,6 +3,7 @@
 const fs = require('fs-extra');
 const os = require('os');
 const path = require('path');
+const sleep = require('sleep-promise');
 const utils = require('./utils');
 
 /** Class representing a tester. */
@@ -113,6 +114,7 @@ class Tester {
           '-n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'SqueezeNet1.1_nchw');
+      await sleep(300000);
       // Run SqueezeNet nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -129,6 +131,7 @@ class Tester {
           'test.jpg -l nchw -n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'SqueezeNet1.1_nchw');
+      await sleep(300000);
       // Run SqueezeNet nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -153,6 +156,7 @@ class Tester {
           '-n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'MobileNetv2_nchw');
+      await sleep(300000);
       // Run MobileNetv2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -169,6 +173,7 @@ class Tester {
           '-l nchw -n 201', [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
           'Examples', 'MobileNetv2_nchw');
+      await sleep(300000);
       // Run MobileNetv2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
@@ -242,8 +247,11 @@ class Tester {
       }
       await this.runEnd2EndTests();
       await this.runLeNetExample();
+      await sleep(300000);
       await this.runSqueezeNetExample();
+      await sleep(300000);
       await this.runMobileNetv2Example();
+      await sleep(300000);
       await this.runTestsByNode();
     }
     // Upload results CSV file onto Reports Server
