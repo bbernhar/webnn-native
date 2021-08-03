@@ -65,19 +65,24 @@ class Tester {
   }
 
   /**
+   * @param {String} device
    * Run End2EndTests.
    */
-  async runEnd2EndTests() {
+  async runEnd2EndTests(device = 'default') {
     const result = {output: ''};
     if (this.config_.device.os === 'linux') {
       await utils.childCommand(
-          this.logger_, './webnn_end2end_tests', [], this.unzipPath_, result);
+          this.logger_, `./webnn_end2end_tests -d ${device}`, [],
+          this.unzipPath_, result);
     } else if (this.config_.device.os === 'win') {
-      await utils.childCommand(this.logger_, 'webnn_end2end_tests.exe', [],
+      await utils.childCommand(this.logger_,
+          `webnn_end2end_tests.exe -d ${device}`, [],
           this.unzipPath_, result);
     }
+    const csvExampleName = device == 'default' ?
+      'End2EndTests' : `End2EndTests/${device}`;
     await utils.saveResultsCSV(
-        this.logger_, this.resultsCSV_, result.output, 'End2EndTests');
+        this.logger_, this.resultsCSV_, result.output, csvExampleName);
   }
 
   /**
@@ -102,128 +107,143 @@ class Tester {
   }
 
   /**
+   * @param {String} device
    * Run SqueezeNet example.
    */
-  async runSqueezeNetExample() {
+  async runSqueezeNetExample(device = 'default') {
     let result = {output: ''};
+    const csvNchwExampleName = device == 'default' ?
+      'SqueezeNet1.1_nchw' : `SqueezeNet1.1_nchw/${device}`;
+    const csvNhwcExampleName = device == 'default' ?
+      'SqueezeNet1.0_nhwc' : `SqueezeNet1.0_nhwc/${device}`;
     if (this.config_.device.os === 'linux') {
       // Run SqueezeNet nchw example
       await utils.childCommand(this.logger_,
           './SqueezeNet -m node/third_party/webnn-polyfill/test-data/models/' +
           'squeezenet1.1_nchw/weights/ -i examples/images/test.jpg -l nchw ' +
-          '-n 201', [], this.unzipPath_, result);
+          `-n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'SqueezeNet1.1_nchw');
+          'Examples', csvNchwExampleName);
       await sleep(300000);
       // Run SqueezeNet nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
           './SqueezeNet -m node/third_party/webnn-polyfill/test-data/models/' +
           'squeezenet1.0_nhwc/weights/ -i examples/images/test.jpg -l nhwc ' +
-          '-n 201', [], this.unzipPath_, result);
+          `-n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'SqueezeNet1.0_nhwc');
+          'Examples', csvNhwcExampleName);
     } else if (this.config_.device.os === 'win') {
       // Run SqueezeNet nchw example
       await utils.childCommand(this.logger_,
           'SqueezeNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
           'models\\squeezenet1.1_nchw\\weights\\ -i examples\\images\\' +
-          'test.jpg -l nchw -n 201', [], this.unzipPath_, result);
+          `test.jpg -l nchw -n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'SqueezeNet1.1_nchw');
+          'Examples', csvNchwExampleName);
       await sleep(300000);
       // Run SqueezeNet nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
           'SqueezeNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
           'models\\squeezenet1.0_nhwc\\weights\\ -i examples\\images\\' +
-          'test.jpg -l nhwc -n 201', [], this.unzipPath_, result);
+          `test.jpg -l nhwc -n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'SqueezeNet1.0_nhwc');
+          'Examples', csvNhwcExampleName);
     }
   }
 
   /**
+   * @param {String} device
    * Run MobileNetv2 example.
    */
-  async runMobileNetv2Example() {
+  async runMobileNetv2Example(device = 'default') {
     let result = {output: ''};
+    const csvNchwExampleName = device == 'default' ?
+      'MobileNetv2_nchw' : `MobileNetv2_nchw/${device}`;
+    const csvNhwcExampleName = device == 'default' ?
+      'MobileNetv2_nhwc' : `MobileNetv2_nhwc/${device}`;
     if (this.config_.device.os === 'linux') {
       // Run MobileNetv2 nchw example
       await utils.childCommand(this.logger_,
           './MobileNetV2 -m node/third_party/webnn-polyfill/test-data/models/' +
           'mobilenetv2_nchw/weights/ -i examples/images/test.jpg -l nchw ' +
-          '-n 201', [], this.unzipPath_, result);
+          `-n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'MobileNetv2_nchw');
+          'Examples', csvNchwExampleName);
       await sleep(300000);
       // Run MobileNetv2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
           './MobileNetV2 -m node/third_party/webnn-polyfill/test-data/models/' +
           'mobilenetv2_nhwc/weights/ -i examples/images/test.jpg -l nhwc ' +
-          '-n 201', [], this.unzipPath_, result);
+          `-n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'MobileNetv2_nhwc');
+          'Examples', csvNhwcExampleName);
     } else if (this.config_.device.os === 'win') {
       // Run MobileNetv2 nchw example
       await utils.childCommand(this.logger_,
           'MobileNetV2.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
           'models\\mobilenetv2_nchw\\weights\\ -i examples\\images\\test.jpg ' +
-          '-l nchw -n 201', [], this.unzipPath_, result);
+          `-l nchw -n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'MobileNetv2_nchw');
+          'Examples', csvNchwExampleName);
       await sleep(300000);
       // Run MobileNetv2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
           'MobileNetV2.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
           'models\\mobilenetv2_nhwc\\weights\\ -i examples\\images\\test.jpg ' +
-          '-l nhwc -n 201', [], this.unzipPath_, result);
+          `-l nhwc -n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'MobileNetv2_nhwc');
+          'Examples', csvNhwcExampleName);
     }
   }
 
   /**
+   * @param {String} device
    * Run ResNet example.
    */
-  async runResNetExample() {
+  async runResNetExample(device = 'default') {
     let result = {output: ''};
+    const csvNchwExampleName = device == 'default' ?
+      'ResNet50v2_nchw' : `ResNet50v2_nchw/${device}`;
+    const csvNhwcExampleName = device == 'default' ?
+      'ResNet101v2_nhwc' : `ResNet101v2_nhwc/${device}`;
     if (this.config_.device.os === 'linux') {
       // Run ResNet50v2 nchw example
       await utils.childCommand(this.logger_,
           './ResNet -m node/third_party/webnn-polyfill/test-data/models/' +
           'resnet50v2_nchw/weights/ -i examples/images/test.jpg -l nchw ' +
-          '-n 201', [], this.unzipPath_, result);
+          `-n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'ResNet50v2_nchw');
+          'Examples', csvNchwExampleName);
       await sleep(300000);
       // Run ResNet101v2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
           './ResNet -m node/third_party/webnn-polyfill/test-data/models/' +
           'resnet101v2_nhwc/weights/ -i examples/images/test.jpg -l nhwc ' +
-          '-n 201', [], this.unzipPath_, result);
+          `-n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'ResNet101v2_nhwc');
+          'Examples', csvNhwcExampleName);
     } else if (this.config_.device.os === 'win') {
       // Run ResNet50v2 nchw example
       await utils.childCommand(this.logger_,
           'ResNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
           'models\\resnet50v2_nchw\\weights\\ -i examples\\images\\test.jpg ' +
-          '-l nchw -n 201', [], this.unzipPath_, result);
+          `-l nchw -n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'ResNet50v2_nchw');
+          'Examples', csvNchwExampleName);
       await sleep(300000);
       // Run ResNet101v2 nhwc example
       result = {output: ''};
       await utils.childCommand(this.logger_,
           'ResNet.exe -m node\\third_party\\webnn-polyfill\\test-data\\' +
           'models\\resnet101v2_nhwc\\weights\\ -i examples\\images\\test.jpg ' +
-          '-l nhwc -n 201', [], this.unzipPath_, result);
+          `-l nhwc -n 201 -d ${device}`, [], this.unzipPath_, result);
       await utils.saveResultsCSV(this.logger_, this.resultsCSV_, result.output,
-          'Examples', 'ResNet101v2_nhwc');
+          'Examples', csvNhwcExampleName);
     }
   }
 
@@ -287,16 +307,37 @@ class Tester {
       if (backend === 'onednn') {
         process.env.LD_LIBRARY_PATH = this.unzipPath_;
       }
-      await this.runEnd2EndTests();
-      await this.runLeNetExample();
-      await sleep(300000);
-      await this.runSqueezeNetExample();
-      await sleep(300000);
-      await this.runMobileNetv2Example();
-      await sleep(300000);
-      await this.runResNetExample();
-      await sleep(300000);
-      await this.runTestsByNode();
+      if (['dml', 'onednn', 'xnnpack'].indexOf(backend) != -1) {
+        await this.runEnd2EndTests();
+        await this.runLeNetExample();
+        await sleep(300000);
+        await this.runSqueezeNetExample();
+        await sleep(300000);
+        await this.runMobileNetv2Example();
+        await sleep(300000);
+        await this.runResNetExample();
+        await sleep(300000);
+        await this.runTestsByNode();
+      } else if (backend === 'openvino') {
+        await this.runEnd2EndTests('cpu');
+        await this.runLeNetExample();
+        await sleep(300000);
+        await this.runSqueezeNetExample('cpu');
+        await sleep(300000);
+        await this.runMobileNetv2Example('cpu');
+        await sleep(300000);
+        await this.runResNetExample('cpu');
+        await sleep(300000);
+        await this.runEnd2EndTests('gpu');
+        await sleep(300000);
+        await this.runSqueezeNetExample('gpu');
+        await sleep(300000);
+        await this.runMobileNetv2Example('gpu');
+        await sleep(300000);
+        await this.runResNetExample('gpu');
+        await sleep(300000);
+        await this.runTestsByNode();
+      }
     }
     // Upload results CSV file onto Reports Server
     await utils.uploadResults(
