@@ -7,12 +7,11 @@
 <script src=/webnn/lib/numpy.js></script>
 <script src=/webnn/utils.js></script>
 <script src=/webnn/dist/webnn-polyfill.js></script>
-
 <div id=log></div>
 <script>
   'use strict';
   let builder;
   setup(() => {
-  const context = navigator.ml.createContext();
-  builder = new MLGraphBuilder(context);
+    const context = navigator.ml.createContext();
+    builder = new MLGraphBuilder(context);
   })

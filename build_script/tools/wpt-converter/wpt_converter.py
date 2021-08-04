@@ -15,7 +15,7 @@ def wpt_converter(input_path, output_path):
         return
     for js_name in all_js_files_list:
         source = "html_head_part.html"
-        target = output_path + "/" + js_name.split("/")[-1].split(".")[0] + ".html"
+        target = os.path.join(output_path, js_name.split(os.path.sep)[-1].split(".")[0] + ".html")
         try:
             html_generator = copyfile(source, target)
         except:
