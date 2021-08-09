@@ -43,7 +43,6 @@ def wpt_converter(input_path, output_path):
                     js_line=js_line.replace("'use strict';\n", "")
                     js_line=js_line.replace("const context = navigator.ml.createContext();\n", "")
                     js_line=js_line.replace("const builder = new MLGraphBuilder(context);\n", "\n")
-                    js_line=js_line.replace("utils.", "")
                     html_writer.writelines(js_line)    
             html_writer.writelines('</script>\n')
 
