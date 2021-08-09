@@ -4,12 +4,11 @@
 <link rel=help href=https://webmachinelearning.github.io/webnn/#api-neuralnetworkcontext-binary>
 <script src=/resources/testharness.js></script>
 <script src=/resources/testharnessreport.js></script>
-<script src=/webnn/lib/numpy.js></script>
-<script src=/webnn/utils.js></script>
 <script src=/webnn/dist/webnn-polyfill.js></script>
 <div id=log></div>
-<script>
+<script type="module">
   'use strict';
+  import * as utils from '/webnn/utils.js';
   let builder;
   setup(() => {
     const context = navigator.ml.createContext();

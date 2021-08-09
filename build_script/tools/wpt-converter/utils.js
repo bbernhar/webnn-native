@@ -1,22 +1,32 @@
 'use strict';
 
-class AccuracyCriterion {
+import {numpy} from './lib/numpy.js';
+
+// const assert = chai.assert;
+
+export class AccuracyCriterion {
   constructor(atol, rtol) {
     this.atol = atol;
     this.rtol = rtol;
   }
 }
 
-const opFp32AccuracyCriteria =
+export const opFp32AccuracyCriteria =
     new AccuracyCriterion(1e-6, 5.0 * 1.1920928955078125e-7);
 
 // The following 2 constants were used for converted tests from NNAPI CTS
-const ctsFp32RestrictAccuracyCriteria =
+export const ctsFp32RestrictAccuracyCriteria =
     new AccuracyCriterion(1e-5, 5.0 * 1.1920928955078125e-7);
-const ctsFp32RelaxedAccuracyCriteria =
+export const ctsFp32RelaxedAccuracyCriteria =
     new AccuracyCriterion(5.0 * 0.0009765625, 5.0 * 0.0009765625);
 
-function almostEqual(a, b, criteria) {
+// Refer to onnx/models
+//   https://github.com/onnx/models/blob/master/workflow_scripts/ort_test_dir_utils.py#L239
+// See details of modelFp32AccuracyCriteria setting:
+//   https://github.com/webmachinelearning/webnn-polyfill/issues/55
+export const modelFp32AccuracyCriteria = new AccuracyCriterion(1e-3, 1e-3);
+
+export function almostEqual(a, b, criteria) {
   const delta = Math.abs(a - b);
   if (delta <= criteria.atol + criteria.rtol * Math.abs(b)) {
     return true;
@@ -26,7 +36,7 @@ function almostEqual(a, b, criteria) {
   }
 }
 
-function checkValue(
+export function checkValue(
     output, expected, criteria = opFp32AccuracyCriteria) {
   assert_true(output.length === expected.length);
   for (let i = 0; i < output.length; ++i) {
@@ -34,12 +44,12 @@ function checkValue(
   }
 }
 
-function sizeOfShape(array) {
+export function sizeOfShape(array) {
   return array.reduce(
       (accumulator, currentValue) => accumulator * currentValue, 1);
 }
 
-function checkShape(shape, expected) {
+export function checkShape(shape, expected) {
   assert_true(shape.length === expected.length);
   for (let i = 0; i < shape.length; ++i) {
     assert_true(shape[i] === expected[i]);
@@ -84,12 +94,12 @@ async function readFromNpy(fileName) {
   return {buffer: typedArray, type, dimensions};
 }
 
-async function createTypedArrayFromNpy(fileName) {
+export async function createTypedArrayFromNpy(fileName) {
   const data = await readFromNpy(fileName);
   return data.buffer;
 }
 
-async function buildConstantFromNpy(builder, fileName) {
+export async function buildConstantFromNpy(builder, fileName) {
   const data = await readFromNpy(fileName);
   return builder.constant(
       {type: data.type, dimensions: data.dimensions}, data.buffer);
@@ -97,7 +107,7 @@ async function buildConstantFromNpy(builder, fileName) {
 
 // Refer to Implicit padding algorithms of Android NNAPI:
 // https://developer.android.com/ndk/reference/group/neural-networks#group___neural_networks_1gab72e9e6263fd5b015bb7f41ec18ce220
-function computeExplicitPadding(
+export function computeExplicitPadding(
     inputSize, stride, filterSize, dilation = 1) {
   const outSize = Math.ceil(inputSize / stride);
   const effectiveFilterSize = (filterSize - 1) * dilation + 1;
@@ -108,7 +118,7 @@ function computeExplicitPadding(
   return [paddingToBeginning, paddingToEnd];
 }
 
-async function setPolyfillBackend(backend) {
+export async function setPolyfillBackend(backend) {
   if (!backend) {
     // Use cpu by default for accuracy reason
     // See more details at:
@@ -117,7 +127,7 @@ async function setPolyfillBackend(backend) {
   }
   const tf = navigator.ml.createContext().tf;
   if (tf) {
-    const backends = ['webgl', 'cpu'];
+    const backends = ['webgl', 'cpu', 'wasm'];
     if (!backends.includes(backend)) {
       if (backend) {
         console.warn(`webnn-polyfill doesn't support ${backend} backend.`);
@@ -131,5 +141,25 @@ async function setPolyfillBackend(backend) {
     console.info(
         `webnn-polyfill uses tf.js ${tf.version_core}` +
         ` ${tf.getBackend()} backend.`);
+  }
+}
+
+export function createActivation(
+    builder, activation, input = undefined, options = {}) {
+  if (activation === 'relu') {
+    return input === undefined ? builder.relu() : builder.relu(input);
+  } else if (activation === 'relu6') {
+    const clampOptions = {};
+    clampOptions.minValue = builder.constant(0);
+    clampOptions.maxValue = builder.constant(6);
+    return input === undefined ? builder.clamp(clampOptions) :
+                                 builder.clamp(input, clampOptions);
+  } else if (activation === 'sigmoid') {
+    return input === undefined ? builder.sigmoid() : builder.sigmoid(input);
+  } else if (activation === 'leakyRelu') {
+    return input === undefined ? builder.leakyRelu(options) :
+                                 builder.leakyRelu(input, options);
+  } else {
+    assert(false, `activation ${activation} is not supported`);
   }
 }
