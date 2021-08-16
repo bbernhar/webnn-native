@@ -2,7 +2,7 @@
   "file": [
     "DirectML.dll",
     "dnnl.dll",
-    "ie_nn_c_api.dll",
+    "ngraph_c_api.dll",
     "libc++.dll",
     "webnn_native.dll",
     "webnn_proc.dll",
