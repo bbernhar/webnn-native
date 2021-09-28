@@ -26,22 +26,19 @@ export const ctsFp32RelaxedAccuracyCriteria =
 //   https://github.com/webmachinelearning/webnn-polyfill/issues/55
 export const modelFp32AccuracyCriteria = new AccuracyCriterion(1e-3, 1e-3);
 
-export function almostEqual(a, b, criteria) {
-  const delta = Math.abs(a - b);
-  if (delta <= criteria.atol + criteria.rtol * Math.abs(b)) {
-    return true;
-  } else {
-    console.warn(`a(${a}) b(${b}) delta(${delta})`);
-    return false;
-  }
-}
+// export function almostEqual(a, b, criteria) {
+//   const delta = Math.abs(a - b);
+//   if (delta <= criteria.atol + criteria.rtol * Math.abs(b)) {
+//     return true;
+//   } else {
+//     console.warn(`a(${a}) b(${b}) delta(${delta})`);
+//     return false;
+//   }
+// }
 
 export function checkValue(
     output, expected, criteria = opFp32AccuracyCriteria) {
-  assert_true(output.length === expected.length);
-  for (let i = 0; i < output.length; ++i) {
-    assert_true(almostEqual(output[i], expected[i], criteria));
-  }
+  assert_array_approx_equals_tolerance(output, expected, criteria.atol, criteria.rtol);
 }
 
 export function sizeOfShape(array) {
@@ -49,12 +46,12 @@ export function sizeOfShape(array) {
       (accumulator, currentValue) => accumulator * currentValue, 1);
 }
 
-export function checkShape(shape, expected) {
-  assert_true(shape.length === expected.length);
-  for (let i = 0; i < shape.length; ++i) {
-    assert_true(shape[i] === expected[i]);
-  }
-}
+// export function checkShape(shape, expected) {
+//   assert.isTrue(shape.length === expected.length);
+//   for (let i = 0; i < shape.length; ++i) {
+//     assert.isTrue(shape[i] === expected[i]);
+//   }
+// }
 
 async function readFromNpy(fileName) {
   const dataTypeMap = new Map([
@@ -149,9 +146,7 @@ export function createActivation(
   if (activation === 'relu') {
     return input === undefined ? builder.relu() : builder.relu(input);
   } else if (activation === 'relu6') {
-    const clampOptions = {};
-    clampOptions.minValue = builder.constant(0);
-    clampOptions.maxValue = builder.constant(6);
+    const clampOptions = {minValue: 0, maxValue: 6};
     return input === undefined ? builder.clamp(clampOptions) :
                                  builder.clamp(input, clampOptions);
   } else if (activation === 'sigmoid') {

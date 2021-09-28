@@ -1,6 +1,6 @@
 /* jshint esversion: 6 */
 
-var numpy = numpy || {};
+export var numpy = numpy || {};
 
 numpy.Array = class {
 
