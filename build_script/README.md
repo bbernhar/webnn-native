@@ -1,19 +1,22 @@
 # Description
 
-Node script [bin/build_webnn](./bin/build_webnn) enables you to build [webnn-native](https://github.com/otcshare/webnn-native) easily.
+Node script [bin/build_webnn](./bin/build_webnn) enables you to build [webnn-native](https://github.com/webmachinelearning/webnn-native) with given `bot_config.json` or  build [chromium-src](https://github.com/otcshare/chromium-src) with given
+`bot_config_chromium.json` for Supporting GPU Buffer / `bot_config_chromium_arraybuffer.json` for supporting Array Buffer easily.
 
 ### Configure config json file
-Here's [bot_config.json](./bot_config.json) config file, its content is
+Here's [bot_config<_chromium|_chromium_arraybuffer>.json](./bot_config.json) config file, its content is
 
 ```
 {
   "target-os": "",
   "target-cpu": "",
   "gnArgs": {
-    "is-clang": true,
-    "is-component": false,
     "is-debug": false,
     "backend": "null"
+    "chromium-extra": {
+      "wire": true,
+      "gpu-buffer": true
+    }
   },
   "clean-build": true,
   "logging": {
@@ -47,8 +50,6 @@ Here's [bot_config.json](./bot_config.json) config file, its content is
 - clean-build: Whether remove output directory. Default true, remove output directory before build.
 
 Seetings in **"gnArgs"**: Specifies build arguments overrides, will save in args.gn file under output directory after running *gn gen --args="args"* command.
-- is-clang: Set to true when compiling with the Clang compiler. Please set false and install [Visual Studio 2019 IDE](https://visualstudio.microsoft.com/downloads/) to build Node Addon on Windows platform.
-- is-component: Component build. Setting to true compiles targets declared as "components" as shared libraries loaded dynamically. This speeds up development time. Default false, components will be linked statically.
 - is-debug: Debug build. Enabling official builds automatically sets is_debug to false.
 - backend: Enables the compilation of specified backend with webnn_enable_\<backend\> argument. Default "null". Values:
   - "null"
@@ -56,6 +57,7 @@ Seetings in **"gnArgs"**: Specifies build arguments overrides, will save in args
   - "dml"
   - "onednn"
   - "xnnpack"
+- chromium-extra: Extra args to build chromium, used in `bot_config_chromium*.json`.
 
 Seetings in **"logging"**: Specifies directory for storing output packages on a dedicated server.
 - level: Logging level. Default "info". Values:
@@ -97,10 +99,12 @@ Commands:
   sync
   pull
   build [options]
+  build-node [options]
   package
   upload
   notify
   all [options]
+  all-node [options]
   help [command]   display help for command
 ```
 
@@ -136,7 +140,7 @@ Options:
 ```
 
 ### Build
-##### Build with arguments from configurations in [./bot_config.json](./bot_config.json)
+##### Build webnn-native with arguments from configurations in [./bot_config.json](./bot_config.json)
 ```sh
 > ./build_webnn
 ```
@@ -221,6 +225,9 @@ The usage of backend and config arguments are same with above **Build** command
 > build_webnn.bat all-node "--backend=[null|openvino|dml|onednn|xnnpack] --config=<path>"
 ```
 
+### Nightly build chromium script - build_chromium_nightly.bat
+This batch script enable to build chromium with both ArrayBuffer and GPUBuffer.
+
 ## Log file
 Save logging message into /tmp/webnn_\<target-os\>\_\<target-cpu\>\_\<backend\>>.log when build on Linux platform or C:\Users\\<username\>\AppData\Local\Temp\\<target-os\>\_\<target-cpu\>\_\<backend\>>.log when build on Windows platform.
 
@@ -228,6 +235,22 @@ Save logging message into /tmp/webnn_\<target-os\>\_\<target-cpu\>\_\<backend\>>
 linter.py is a script for check js scripts by eslint tool.  
 make_tar.py is a script for packaging build to .tgz compressed file.  
 nightly-test is an auto test framework by testing build, see details on [tools/nightly-test/README.md](./tools/nightly-test/README.md).
+
+## How to deploy this scripts for nightly build?
+### Nightly build chromium
+Suppose that you have [fetched chromium-src code](https://github.com/otcshare/webnn-native/wiki/How-to-build-Chromium-browser-with-otcshare-chromium-src-for-Windows), for example, code is now under C:\path\chromium
+
+* Step1: Deploy this build_script and configurations files into C:\path\chromium\src
+
+   Copy build_script into C:\path\chromium\src
+
+   Copy build_script/bot_config_chromium.json C:\path\chromium\src
+
+   Copy build_script/bot_config_chromium_arraybuffer.json C:\path\chromium\src
+
+* Step2: Modify configurations files following above "Configure config json file"
+
+* Step3: Modify path variable in build_chromium_nightly file, then create task by "Windows Task Scheduler" with action to call build_chromium_nightly.bat
 
 ## BKMs
 ### To support to upload via SSH

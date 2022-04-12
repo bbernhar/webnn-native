@@ -1,0 +1,28 @@
+{
+  "target-os": "",
+  "target-cpu": "",
+  "gnArgs": {
+    "is-debug": false,
+    "backend": "dml",
+    "chromium-extra": {
+      "wire": true,
+      "gpu-buffer": true
+    }
+  },
+  "clean-build": false,
+  "logging": {
+    "level": "debug",
+    "file": ""
+  },
+  "archive-server": {
+    "host": "powerbuilder",
+    "dir": "/home/webnn/project/webnn-native/nightly_chromium/",
+    "ssh-user": "webnn"
+  },
+  "email-service":{
+    "user": "WebNNChromiumBuilder",
+    "host": "smtp.intel.com",
+    "from": "WebNNChromiumBuilder",
+    "to": "feng.dai@intel.com"
+  }
+}

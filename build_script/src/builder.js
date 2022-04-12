@@ -21,6 +21,7 @@ class Builder {
    */
   constructor(rootDir) {
     this.rootDir_ = rootDir;
+    this.targetType_ = null;
     this.outDir_ = null;
     this.config_ = undefined;
     this.childResult_ = {};
@@ -45,17 +46,25 @@ class Builder {
   init(options) {
     let backend = null;
     let configFile = 'build_script/bot_config.json';
+    // 'native': build webnn-naitve
+    let targetType = 'native';
 
     if (options !== undefined) {
       backend = options.backend;
       configFile = options.config;
+      // 'chromium': build chromium-src
+      // 'bot_config_chromium.json': support GPUBuffer
+      // 'bot_config_chromium_arraybuffer.json': support ArrayBuffer
+      targetType = configFile.indexOf('bot_config_chromium') != -1 ? 'chromium' : 'native';
     }
+
+    this.targetType_ = targetType;
 
     if (!path.isAbsolute(configFile)) {
       configFile = path.join(this.rootDir_, configFile);
     }
 
-    this.config_ = new BuilderConf(backend, configFile);
+    this.config_ = new BuilderConf(backend, configFile, this.targetType_);
     this.config_.init();
     this.config_.logger.debug('root dir: ' + this.rootDir_);
     this.outDir_ = path.join(this.rootDir_, 'out', this.config_.buildType);
@@ -94,8 +103,12 @@ class Builder {
     this.client_ = new SMTPClient({
       user: this.config_.emailService.user,
       host: this.config_.emailService.host});
-    const logFileName = 'webnn_' + this.config_.targetOs + '_' +
+    let logFileName = `${this.targetType_}_` + this.config_.targetOs + '_' +
       this.config_.targetCpu + '_' + this.config_.backend + '.log';
+    if (this.targetType_ === 'chromium') {
+      logFileName = `${this.targetType_}_` + this.config_.targetOs + '_' +
+        this.config_.targetCpu + '_' + this.config_.backend + `_${this.config_.supportBuffer}.log`;
+    }
     this.message_ = {
       text: this.test_,
       from: this.config_.emailService.from,
@@ -112,7 +125,7 @@ class Builder {
 
   /**
    * Run specified command with optional options.
-   * @param {String} cmd Command string.
+   * @param {string} cmd Command string.
    * @param {object} options An object containing options as key-value pairs
    *    {backend:"", config:"",}.
    */
@@ -169,11 +182,14 @@ class Builder {
    */
   async actionSync() {
     this.config_.logger.info('Action sync');
-    const gclientFile = path.join(this.rootDir_, '.gclient');
 
-    if (!fs.existsSync(gclientFile)) {
-      fs.copyFileSync(path.join(this.rootDir_, 'scripts', 'standalone.gclient'),
-          gclientFile);
+    if (this.targetType_ === 'native') {
+      const gclientFile = path.join(this.rootDir_, '.gclient');
+      if (!fs.existsSync(gclientFile)) {
+        fs.copyFileSync(
+            path.join(this.rootDir_, 'scripts', 'standalone.gclient'),
+            gclientFile);
+      }
     }
 
     await this.childCommand(
@@ -241,14 +257,17 @@ class Builder {
       process.exit(1);
     }
 
-    const args = ['-C', this.outDir_];
+    let args = ['-C', this.outDir_];
+    if (this.targetType_ = 'chromium') {
+      args = ['-C', this.outDir_, 'chrome', 'mini_installer'];
+    }
     await this.childCommand(
-        'ninja', args, this.rootDir_);
+      os.platform() == 'win32' ? 'autoninja.bat' : 'autoninja', args, this.rootDir_);
     if (!this.childResult_.success) {
       this.config_.logger.error(
-          `Failed to run 'ninja -C ${this.outDir_}' command.`);
+          `Failed to run 'autoninja -C ${this.outDir_}' command.`);
       await this.sendEmail('FAILED',
-          `Failed to run 'ninja -C ${this.outDir_}' command`);
+          `Failed to run 'autoninja -C ${this.outDir_}' command`);
       process.exit(1);
     }
   }
@@ -294,7 +313,7 @@ class Builder {
 
   /**
    * Copy test data resources files into out directory.
-   * @param {String} key json key, default "default"
+   * @param {string} key json key, default "default"
    */
   copyTestDataResources(key = 'default') {
     const testDataJson =
@@ -331,30 +350,54 @@ class Builder {
    */
   async actionPackage() {
     this.config_.logger.info('Action package');
-    this.copyTestDataResources();
     const buildInfo = this.getBuildInfo();
-    const packageName =
-      `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.tgz`;
-    console.log(`packageName: ${packageName}`);
-    const packageFile = path.join(this.rootDir_, packageName);
-    const packageCfg = path.join(
-        this.rootDir_, 'build_script', 'src', `tar_${buildInfo.os}.json`);
-    const compressedScript = path.join(
-        this.rootDir_, 'build_script', 'tools', 'make_tar.py');
-    await this.childCommand(
-        'python',
-        [compressedScript, this.outDir_, packageCfg, packageFile],
-        this.rootDir_);
-    if (!this.childResult_.success) {
-      this.config_.logger.error('Failed to package.');
-      await this.sendEmail('FAILED', 'Error: Failed to package');
-      process.exit(1);
+    if (this.targetType_ === 'native') {
+      this.copyTestDataResources();
+      const packageName =
+        `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.tgz`;
+      console.log(`packageName: ${packageName}`);
+      const packageFile = path.join(this.rootDir_, packageName);
+      const packageCfg = path.join(
+          this.rootDir_, 'build_script', 'src', `tar_${buildInfo.os}.json`);
+      const compressedScript = path.join(
+          this.rootDir_, 'build_script', 'tools', 'make_tar.py');
+      await this.childCommand(
+          'python',
+          [compressedScript, this.outDir_, packageCfg, packageFile],
+          this.rootDir_);
+      if (!this.childResult_.success) {
+        this.config_.logger.error('Failed to package.');
+        await this.sendEmail('FAILED', 'Error: Failed to package');
+        process.exit(1);
+      }
+      const savedFile = path.join(this.outDir_, packageName);
+      fs.rename(packageFile, savedFile, function(err) {
+        if (err) throw err;
+        console.log(`Save packaged file as ${savedFile}`);
+      });
+    } else if (this.targetType_ === 'chromium') {
+      switch (buildInfo.os) {
+        case 'mac':
+          // Zip files
+          await this.childCommand('zip',
+              ['-r', this.packagedFile, 'Chromium.app', 'pnacl'], this.outDir_);
+          break;
+        case 'win':
+          // Extract chrome.7z
+          await this.childCommand(
+              path.join(this.rootDir_, 'third_party', 'lzma_sdk', 'Executable', '7za.exe'),
+              ['x', '-y', '-sdel', path.join(this.outDir_, 'chrome.7z')], this.outDir_);
+          // Zip files
+          await this.childCommand(
+              path.join(this.rootDir_, 'build_script', 'tools', 'make_win32_zip.bat'),
+              [this.rootDir_, __dirname, this.outDir_, this.config_.supportBuffer],
+              this.outDir_);
+          break;
+        default:
+          // Nothing to do on Linux and Android
+          break;
+      }
     }
-    const savedFile = path.join(this.outDir_, packageName);
-    fs.rename(packageFile, savedFile, function(err) {
-      if (err) throw err;
-      console.log(`Save packaged file as ${savedFile}`);
-    });
   }
 
   /**
@@ -363,11 +406,32 @@ class Builder {
   async actionUpload() {
     this.config_.logger.info('Action upload');
     if (!this.remoteSshHost_) return;
-
     const buildInfo = this.getBuildInfo();
-    const packageName =
-      `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.tgz`;
-    const packageFile = path.join(this.outDir_, packageName);
+    let packageFile;
+    if (this.targetType_ === 'chromium') {
+      switch (buildInfo.os) {
+        case 'android':
+          packageFile = path.join(this.outDir_, 'apks', 'ChromePublic.apk');
+          break;
+        case 'linux':
+          const installer =
+            '//out/linux_x64_release/chromium-browser-unstable_102.0.4976.0-1_amd64.deb';
+          packageFile = path.join(this.outDir_, installer.split('/')[4]);
+          break;
+        case 'mac':
+          packageFile = path.join(this.outDir_, 'chromium-mac.zip');
+          break;
+        case 'win':
+          packageFile= path.join(this.outDir_, `chrome-win32-${this.config_.supportBuffer}.zip`);
+          break;
+        default:
+          packageFile = null;
+          break;
+      }
+    } else if (this.targetType_ === 'native') {
+      packageFile = path.join(this.outDir_,
+          `webnn-${buildInfo.os}-${buildInfo.cpu}-${buildInfo.backend}.tgz`);
+    }
 
     await this.makeRemoteDir();
     await this.childCommand(
@@ -425,7 +489,9 @@ class Builder {
         info['os'] = line.slice(line.indexOf('=') + 2).split('"')[1];
       } else if (line.startsWith('target_cpu')) {
         info['cpu'] = line.slice(line.indexOf('=') + 2).split('"')[1];
-      } else if (line.startsWith('webnn_enable_')) {
+      } else if (line.startsWith('webnn_enable_') &&
+          line.indexOf('webnn_enable_wire') === -1 &&
+          line.indexOf('webnn_enable_gpu_buffer') === -1) {
         info['backend'] = line.slice(0, line.indexOf('=') - 1).split('_')[2];
       }
     }
@@ -434,7 +500,7 @@ class Builder {
   }
 
   /**
-   * @return {String} Returns a string for commit id.
+   * @return {string} Returns a string for commit id.
    */
   async getBuildCommitId() {
     const obj = {};
@@ -476,8 +542,13 @@ class Builder {
     if (!this.remoteSshHost_) return;
 
     const buildInfo = this.getBuildInfo();
-    const logFile = path.join(os.tmpdir(),
-        `webnn_${buildInfo.os}_${buildInfo.cpu}_${buildInfo.backend}.log`);
+    let logFile = path.join(os.tmpdir(),
+        `${this.targetType_}_${buildInfo.os}_${buildInfo.cpu}_${buildInfo.backend}.log`);
+    if (this.targetType_ === 'chromium') {
+      logFile = path.join(os.tmpdir(),
+        `${this.targetType_}_${buildInfo.os}_${buildInfo.cpu}_${buildInfo.backend}_` +
+        `${this.config_.supportBuffer}.log`);
+    }
     await this.makeRemoteDir();
     await this.childCommand(
         'scp', [logFile, this.remoteSshDir_], this.rootDir_);
@@ -491,15 +562,16 @@ class Builder {
 
   /**
    * Send status email
-   * @param {String} result build result
-   * @param {String} cause string
+   * @param {string} result build result
+   * @param {string} cause string
    * @return {object} promise.
    */
   sendEmail(result, cause) {
     return new Promise((resolve, reject) => {
+      const title = this.targetType_ === 'native' ? 'WebNN Native': 'Chromium';
       this.message_.subject = `[${this.config_.targetOs}]` +
-        `[${this.config_.backend}] WebNN Nightly Build -- ${result}`;
-      this.message_.text = 'Hi all,\n \nWebNN Nightly Build ' + result +
+        `[${this.config_.backend}] ${title} Nightly Build -- ${result}`;
+      this.message_.text = `Hi all,\n \n${title} Nightly Build ` + result +
         ' for ' + this.config_.targetOs + ' ' + this.config_.targetCpu + ' ' +
         this.config_.backend + ' backend';
       if (cause !== undefined) {
@@ -514,11 +586,11 @@ class Builder {
 
   /**
    * Execute command.
-   * @param {String} cmd command string.
+   * @param {string} cmd command string.
    * @param {array} args arguments array.
-   * @param {String} cwd path string.
+   * @param {string} cwd path string.
    * @param {object} result return value.
-   * @param {Boolean} shell shell option.
+   * @param {boolean} shell shell option.
    * @return {object} child_process.spawn promise.
    */
   childCommand(cmd, args, cwd, result, shell = false) {

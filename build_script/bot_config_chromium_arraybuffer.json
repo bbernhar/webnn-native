@@ -3,25 +3,26 @@
   "target-cpu": "",
   "gnArgs": {
     "is-debug": false,
-    "backend": "null",
+    "backend": "dml",
     "chromium-extra": {
       "wire": true,
-      "gpu-buffer": true
+      "gpu-buffer": false
     }
   },
-  "clean-build": true,
+  "clean-build": false,
   "logging": {
-    "level": "info"
+    "level": "debug",
+    "file": ""
   },
   "archive-server": {
     "host": "",
     "dir": "",
     "ssh-user": ""
   },
-  "email-service": {
-    "user": "",
+  "email-service":{
+    "user": "WebNNChromiumBuilder",
     "host": "",
-    "from": "",
+    "from": "WebNNChromiumBuilder",
     "to": ""
   }
 }

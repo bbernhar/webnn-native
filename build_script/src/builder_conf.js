@@ -13,12 +13,16 @@ const winston = require('winston');
  */
 class BuilderConf {
   /**
-   * @param {backend} backend Target backend.
+   * @param {String} backend Target backend.
    * @param {String} conf Configuration file for build.
+   * @param {String} targetType
+   *    'native': build webnn-native,
+   *    'chromium': build chromium-src
    */
-  constructor(backend, conf) {
+  constructor(backend, conf, targetType) {
     this.conf_ = conf;
     this.backend_ = backend;
+    this.targetType_ = targetType;
 
     // Get list via "gn help target_os <out_dir>", current support
     // linux|win
@@ -28,13 +32,20 @@ class BuilderConf {
     // x86|x64|arm|arm64
     this.targetCpu_ = undefined;
 
-    // gn-args
+    // gn-args for generate webnn-native or chromium-src
     this.gnArgs_ = {
-      isClang: false,
-      isComponent: false,
       isDebug: false,
       backend: 'null',
     };
+
+    // extra gn-args for generate chromium-src
+    this.chromiumExtraGnArgs_ = {
+      wire: true,
+      gpuBuffer: true, // false: ArrayBuffer
+    };
+
+    // support buffer type: 'ArrayBuffer', 'GPUBuffer'
+    this.supportBuffer_ = undefined;
 
     // True indicate remove out dir before build
     this.cleanBuild_ = true;
@@ -65,6 +76,7 @@ class BuilderConf {
    *  this.targetOs_
    *  this.targetCpu_
    *  this.gnArgs_
+   *  this.chromiumExtraGnArgs_
    *  this.cleanBuild_
    *  this.archiveServer_
    *  this.emailService_
@@ -79,10 +91,15 @@ class BuilderConf {
     this.targetOs_ = this.targetOs_ || this.getHostOs();
     this.targetCpu_ = this.targetCpu_ || this.getHostCpu();
 
-    this.gnArgs_.isClang = config['gnArgs']['is-clang'];
-    this.gnArgs_.isComponent = config['gnArgs']['is-component'];
     this.gnArgs_.isDebug = config['gnArgs']['is-debug'];
     this.gnArgs_.backend = config['gnArgs']['backend'];
+    // save path of native build
+    this.archiveServer_.dir = config['archive-server']['dir'];
+
+    if (this.targetType_ === 'chromium') {
+      this.chromiumExtraGnArgs_.wire = config['gnArgs']['chromium-extra']['wire'];
+      this.chromiumExtraGnArgs_.gpuBuffer = config['gnArgs']['chromium-extra']['gpu-buffer'];
+    }
 
     this.cleanBuild_ = config['clean-build'];
 
@@ -107,9 +124,19 @@ class BuilderConf {
 
     // Handel logger
     const logLevel = config['logging']['level'];
-    const logFile = path.join(os.tmpdir(),
-        `webnn_${this.targetOs_}_${this.targetCpu_ }_${this.backend_}.log`);
-
+    let logFile = path.join(os.tmpdir(),
+        `${this.targetType_}_${this.targetOs_}_${this.targetCpu_ }` +
+        `_${this.backend_}.log`);
+    if (this.targetType_ === 'chromium') {
+      let buffer = 'GPUBuffer';
+      if (!this.chromiumExtraGnArgs_.gpuBuffer) {
+        buffer = 'ArrayBuffer';
+      }
+      this.supportBuffer_ = buffer;
+      logFile = path.join(os.tmpdir(),
+          `${this.targetType_}_${this.targetOs_}_${this.targetCpu_ }` +
+          `_${this.backend_}_${buffer}.log`);
+    }
     if (fs.existsSync(logFile)) {
       fs.unlinkSync(logFile);
     }
@@ -133,46 +160,59 @@ class BuilderConf {
     this.logger_.debug(`  backend: ${this.backend_}`);
     this.logger_.debug(`  target OS: ${this.targetOs_}`);
     this.logger_.debug(`  target CPU: ${this.targetCpu_}`);
+    if (this.targetType_ === 'chromium') {
+      this.logger_.debug(`  enable wire: ${this.chromiumExtraGnArgs_.wire}`);
+      this.logger_.debug(`  enable GPU Buffer: ${this.chromiumExtraGnArgs_.gpuBuffer}`);
+    }
     this.logger_.debug(`  log level: ${logLevel}`);
     this.logger_.debug(`  log file: ${logFile}`);
   }
 
   /**
-   * @return {String} target backend.
+   * @return {string} target backend.
    */
   get backend() {
     return this.backend_;
   }
 
   /**
-   * @return {String} target OS.
+   * @return {string} supported buffer type.
+   */
+  get supportBuffer() {
+    return this.supportBuffer_;
+  }
+
+  /**
+   * @return {string} target OS.
    */
   get targetOs() {
     return this.targetOs_;
   }
 
   /**
-   * @return {String} target CPU.
+   * @return {string} target CPU.
    */
   get targetCpu() {
     return this.targetCpu_;
   }
 
   /**
-   * @return {String} arguments to run 'gn gen'.
+   * @return {string} arguments to run 'gn gen'.
    */
   get gnArgs() {
     let args = 'target_os=\"' + this.targetOs_ + '\"';
     args += ' target_cpu=\"' + this.targetCpu_ + '\"';
     args += ' is_debug=' + (this.gnArgs_.isDebug).toString();
-    args += ' is_component_build=' + (this.gnArgs_.isComponent).toString();
-    args += ' is_clang=' + (this.gnArgs_.isClang).toString();
     args += ' webnn_enable_' + this.backend_ + '=true';
+    if (this.targetType_ === 'chromium') {
+      args += ' webnn_enable_wire=' + (this.chromiumExtraGnArgs_.wire).toString();
+      args += ' webnn_enable_gpu_buffer=' + (this.chromiumExtraGnArgs_.gpuBuffer).toString();
+    }
     return args;
   }
 
   /**
-   * @return {String} build type.
+   * @return {string} build type.
    */
   get buildType() {
     return this.gnArgs_.isDebug ? 'Debug' : 'Release';
@@ -186,21 +226,21 @@ class BuilderConf {
   }
 
   /**
-   * @return {object} logger.
+   * @return {Object} logger.
    */
   get logger() {
     return this.logger_;
   }
 
   /**
-   * @return {object} archive server.
+   * @return {Object} archive server.
    */
   get archiveServer() {
     return this.archiveServer_;
   }
 
   /**
-   * @return {object} email service.
+   * @return {Object} email service.
    */
   get emailService() {
     return this.emailService_;
@@ -208,7 +248,7 @@ class BuilderConf {
 
   /**
    * Get hosted OS string.
-   * @return {String} hosted OS.
+   * @return {string} hosted OS.
    */
   getHostOs() {
     const hostOs = os.platform();
@@ -227,7 +267,7 @@ class BuilderConf {
 
   /**
    * Get hosted CPU string.
-   * @return {String} hosted CPU.
+   * @return {string} hosted CPU.
    */
   getHostCpu() {
     let hostCpu = os.arch();
