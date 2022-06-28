@@ -24,7 +24,7 @@ import time
 
 import os
 import numpy as np
-from PIL import Image
+import image
 import tflite_runtime.interpreter as tflite
 
 
@@ -52,7 +52,7 @@ if __name__ == '__main__':
       '-n',
       '--model_name',
       default='model_name',
-      help='model name')       
+      help='model name')
   parser.add_argument(
       '-l',
       '--label_file',
@@ -72,7 +72,7 @@ if __name__ == '__main__':
       '-o',
       '--out_dir',
       default='0',
-      help='sub dir name under out/test_data_set directory')      
+      help='sub dir name under out/test_data_set directory')
   args = parser.parse_args()
 
   interpreter = tflite.Interpreter(
@@ -96,7 +96,7 @@ if __name__ == '__main__':
   if floating_model:
     input_data = (np.float32(input_data) - args.input_mean) / args.input_std
 
-  save_dir = 'out/%s_nhwc/test_data_set/%s' % (args.model_name, args.out_dir)
+  save_dir = 'out\\%s_nhwc\\test_data_set\\%s' % (args.model_name, args.out_dir)
 
   if not os.path.exists(save_dir):
     os.makedirs(save_dir)
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
   output_data = interpreter.get_tensor(output_details[0]['index'])
 
-  save_npy('%s/output_0.npy' % save_dir, output_data)
+  save_npy('%s\\output_0.npy' % save_dir, output_data)
 
   results = np.squeeze(output_data)
 

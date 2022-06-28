@@ -30,18 +30,20 @@ if __name__ == '__main__':
       '-n',
       '--model_name',
       default='model_name',
-      help='model name')     
+      help='model name')
   args = parser.parse_args()
 
-  pbfile_list = glob.glob('%s/*/*.pb' % args.input_dir)
+  pbfile_list = glob.glob('%s\\*\\*.pb' % args.input_dir)
+
+  print(pbfile_list)
 
   for pbfile in pbfile_list:
     dir_name = re.findall(r'\d+$', os.path.dirname(pbfile))[0]
     npy_name = os.path.splitext(os.path.basename(pbfile))[0]
-    save_dir = 'out/%s_nchw/test_data_set/%s' % (args.model_name, dir_name)
+    save_dir = 'out\\%s_nchw\\test_data_set\\%s' % (args.model_name, dir_name)
     if not os.path.exists(save_dir):
       os.makedirs(save_dir)
     data = onnx.load_tensor(pbfile)
     converted_data = numpy_helper.to_array(data)
-    with open('%s/%s.npy' % (save_dir, npy_name), 'wb') as f:
+    with open('%s\\%s.npy' % (save_dir, npy_name), 'wb') as f:
       np.save(f, converted_data)
