@@ -101,20 +101,16 @@ HRESULT Device::Init()
         nullptr, // initial pipeline state
         IID_GRAPHICS_PPV_ARGS(m_commandList.GetAddressOf())));
 
-    D3D12_FEATURE_DATA_ARCHITECTURE arch = {};
-    ReturnIfFailed(m_d3d12Device->CheckFeatureSupport(D3D12_FEATURE_ARCHITECTURE, &arch, sizeof(arch)));
-
     D3D12_FEATURE_DATA_D3D12_OPTIONS options = {};
     ReturnIfFailed(m_d3d12Device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS, &options, sizeof(options)));
 
     gpgmm::d3d12::ALLOCATOR_DESC allocatorDesc = {};
     allocatorDesc.Adapter = dxgiAdapter;
     allocatorDesc.Device = m_d3d12Device;
-    allocatorDesc.IsUMA = arch.UMA;
     allocatorDesc.ResourceHeapTier = options.ResourceHeapTier;
 
 #ifdef WEBNN_ENABLE_RESOURCE_DUMP
-    allocatorDesc.RecordOptions.Flags |= gpgmm::d3d12::ALLOCATOR_RECORD_FLAG_ALL_EVENTS;
+    allocatorDesc.RecordOptions.Flags |= gpgmm::d3d12::EVENT_RECORD_FLAG_ALL_EVENTS;
     allocatorDesc.RecordOptions.MinMessageLevel = D3D12_MESSAGE_SEVERITY_MESSAGE;
     allocatorDesc.RecordOptions.UseDetailedTimingEvents = true;
 #endif
